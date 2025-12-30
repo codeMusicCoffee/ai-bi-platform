@@ -1,0 +1,44 @@
+{
+  "name": "ai-bi-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.1",
+    "@ai-sdk/openai": "^3.0.1",
+    "@ai-sdk/react": "^3.0.3",
+    "@codesandbox/sandpack-react": "^2.20.0",
+    "@codesandbox/sandpack-themes": "^2.0.21",
+    "@google/generative-ai": "^0.24.1",
+    "ai": "^6.0.3",
+    "axios": "^1.13.2",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^3.6.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.2.1",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "volta": {
+    "node": "20.19.6"
+  }
+}

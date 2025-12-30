@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: white;
+}
+
+/* Sandpack 样式修复，确保预览区域正确显示 */
+.sp-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.sp-layout {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.sp-preview-container {
+  flex: 1 !important;
+  min-height: 0 !important;
+  position: relative !important;
+}
+
+.sp-preview-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+.sp-tabs {
+  flex-shrink: 0 !important;
+}
+
