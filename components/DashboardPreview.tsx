@@ -30,6 +30,10 @@ export default function DashboardPreview({ code }: { code: string }) {
     },
   }), []);
 
+  const options = useMemo(() => ({
+    externalResources: ["https://cdn.tailwindcss.com"]
+  }), []);
+
   return (
     <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
       {/* 自定义 Tab 切换按钮 */}
@@ -66,9 +70,7 @@ export default function DashboardPreview({ code }: { code: string }) {
           theme={githubLight}
           files={files}
           customSetup={customSetup}
-          options={{
-            externalResources: ["https://cdn.tailwindcss.com"]
-          }}
+          options={options}
         >
           {/* 同时渲染两个视图，通过绝对定位和 z-index 控制显示 */}
           <div 

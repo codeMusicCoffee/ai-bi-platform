@@ -1,5 +1,5 @@
 // 暂时使用硬编码的看板代码，不调用真实模型
-const MOCK_DASHBOARD_CODE = `import React, { useState, useEffect } from 'react';
+export const MOCK_DASHBOARD_CODE = `import React, { useState, useEffect } from 'react';
 
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
