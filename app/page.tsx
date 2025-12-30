@@ -29,11 +29,9 @@ export default function Home() {
   const [testMessage, setTestMessage] = useState("");
   const [error, setError] = useState<string>('');
 
-
   const handleTestHealth = async () => {
     setTestStatus('testing');
     setTestMessage("");
-    
     try {
       const response = await chatService.testHealth();
       console.log('Health check response:', response);
@@ -45,8 +43,6 @@ export default function Home() {
       setTestMessage(error instanceof Error ? error.message : '连接失败');
     }
   };
-
-
 
   // 使用 EventSource 方式获取流式数据
   const handleGenerate = async (e: React.FormEvent) => {
@@ -61,11 +57,13 @@ export default function Home() {
     
     try {
       console.log('🚀 开始调用流式 API');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.151.201:8000';
 
-      const response = await fetch('/api/api/chat', {
+      const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'text/event-stream',
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
           messages: [
