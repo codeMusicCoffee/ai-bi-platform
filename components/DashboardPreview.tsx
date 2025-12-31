@@ -1,101 +1,285 @@
-"use client";
+'use client';
 
-import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from "@codesandbox/sandpack-react";
-import { githubLight } from "@codesandbox/sandpack-themes";
-import { FileCode, Play } from "lucide-react";
-import { useMemo, useState } from "react";
+import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
+import { githubLight } from '@codesandbox/sandpack-themes';
+import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
+import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useState } from 'react';
 
+// 简单的错误边界组件
+class ErrorBoundary extends Component<
+  { children: ReactNode; code: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; code: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
-type ViewMode = "preview" | "code";
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
 
-export default function DashboardPreview({ code }: { code: string }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("preview");
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // 避免在严格模式下修改 readonly 属性导致的二次报错
+    console.error('Sandpack Error Caught:', error);
+  }
 
-  // 使用 useMemo 稳定 files 对象，避免不必要的重新渲染
-  const files = useMemo(() => ({
-    "/App.js": code || "",
-  }), [code]);
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col bg-red-50 p-4 overflow-hidden relative">
+          <div className="flex flex-col items-center justify-center p-6 text-center z-10">
+            <div className="bg-white p-6 rounded-xl shadow-lg border border-red-100 max-w-md w-full">
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4 mx-auto">
+                <Loader2 className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">组件渲染遇到问题</h3>
+              <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                {this.state.error?.message || '生成的代码可能包含语法错误'}
+              </p>
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium mb-3"
+              >
+                <RefreshCw className="w-4 h-4" />
+                尝试重新加载
+              </button>
+              <p className="text-xs text-gray-400">您可以在下方查看或复制原始代码</p>
+            </div>
+          </div>
 
+          {/* 降级显示原始代码 */}
+          <div className="flex-1 mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-inner relative opacity-75 grayscale">
+            <pre className="w-full h-full p-4 text-xs font-mono text-gray-600 overflow-auto whitespace-pre-wrap">
+              {this.props.code}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+type ViewMode = 'preview' | 'code';
+
+export default function DashboardPreview({
+  code,
+  isLoading,
+  refreshId,
+}: {
+  code: string;
+  isLoading?: boolean;
+  refreshId?: number | string;
+}) {
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 🔒 1. Sandpack 失败自动重建
+  const [retryKey, setRetryKey] = useState(0);
+
+  // 当 loading 结束时，强制刷新一次沙箱
+  // 3 秒还没出来，直接重建
+  useEffect(() => {
+    if (!isLoading) {
+      // ⚡️ 核心修复：延迟 200ms 再执行刷新。
+      // 直接同步刷新可能会因为 React 批处理或 Sandpack 内部状态未清理完毕而无效。
+      // 给一点缓冲时间，成功率会大大提高。
+      const timer = setTimeout(() => {
+        setRefreshKey((prev) => prev + 1);
+      }, 200);
+
+      const t = setTimeout(() => {
+        setRetryKey((k) => k + 1);
+      }, 3000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(t);
+      };
+    }
+  }, [isLoading]);
+
+  // 使用 useMemo 稳定 files 对象
+  // 直接使用 code，移除防抖，确保 Code 模式下实时更新，且 Preview 模式在加载完成后立即显示完整代码
+  // ⚡️ 优化核心：
+  // 在 loading 期间，给 Sandpack 提供一个安全的占位代码，避免它尝试编译不完整的流式代码
+  // 只有当 loading 结束（代码生成完毕）时，才将真正的 code 注入 files
+  const files = useMemo(
+    () => ({
+      '/App.js':
+        !isLoading && code
+          ? code
+          : 'export default function App() { return <div className="h-full flex items-center justify-center text-gray-400 animate-pulse">正在接收数据...</div> }',
+      '/index.js': `import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
+
+import App from "./App";
+
+const root = createRoot(document.getElementById("root"));
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);`,
+      '/public/index.html': `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`,
+      '/styles.css': `
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+`,
+    }),
+    [code, isLoading]
+  );
+
+  const dependencies = {
+    react: '18.3.1',
+    'react-dom': '18.3.1',
+    recharts: '2.12.7',
+    'lucide-react': '0.400.0',
+    'framer-motion': '11.0.3',
+    clsx: '2.1.1',
+    'tailwind-merge': '2.5.2',
+    'react-is': '18.3.1',
+    'date-fns': 'latest',
+  };
   // 稳定 customSetup 对象
-  const customSetup = useMemo(() => ({
-    dependencies: {
-      "recharts": "latest",
-      "lucide-react": "latest",
-      "clsx": "latest",
-      "tailwind-merge": "latest",
-      "react-is": "latest", // recharts 的必需依赖
-      "tailwindcss": "latest",
-      "postcss": "latest",
-      "autoprefixer": "latest",
-    },
-  }), []);
+  const customSetup = useMemo(
+    () => ({
+      // 1. 强制配置 npm 镜像源为淘宝源
+      npmRegistries: [
+        {
+          enabledScopes: Object.keys(dependencies), // 匹配所有包
+          limitToScopes: [],
+          registryUrl: 'https://registry.npmmirror.com/',
+          proxyEnabled: false,
+        },
+      ],
+      dependencies,
+    }),
+    []
+  );
 
-  const options = useMemo(() => ({
-    externalResources: ["https://cdn.tailwindcss.com"]
-  }), []);
+  const options = useMemo(
+    () => ({
+      externalResources: ['https://cdn.tailwindcss.com'],
+      // 关键：禁用统计
+      enableAnalytics: false,
+      recompileMode: 'delayed',
+      recompileDelay: 500,
+    }),
+    []
+  );
 
   return (
     <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
       {/* 自定义 Tab 切换按钮 */}
       <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
         <button
-          onClick={() => setViewMode("preview")}
+          onClick={() => setViewMode('preview')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            viewMode === "preview"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+            viewMode === 'preview'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
           <Play className="w-4 h-4" />
           Preview
         </button>
         <button
-          onClick={() => setViewMode("code")}
+          onClick={() => setViewMode('code')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            viewMode === "code"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+            viewMode === 'code'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
           <FileCode className="w-4 h-4" />
           Code
         </button>
+
+        {/* 强制刷新按钮 */}
+        <button
+          onClick={() => setRefreshKey((k) => k + 1)}
+          className="ml-auto flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
+          title="强制重新加载预览"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span className="hidden sm:inline">刷新预览</span>
+        </button>
       </div>
 
-      {/* 内容区域 - 同时渲染两个视图但只显示一个，避免切换时丢失状态 */}
+      {/* 内容区域 */}
       <div className="flex-1 min-h-0 relative">
-        <SandpackProvider
-          key={code} // 使用 code 作为 key，确保代码变化时重新创建
-          template="react"
-          theme={githubLight}
-          files={files}
-          customSetup={customSetup}
-          options={options}
-        >
-          {/* 同时渲染两个视图，通过绝对定位和 z-index 控制显示 */}
-          <div 
-            className={`w-full h-full absolute inset-0 ${viewMode === "preview" ? "z-10" : "z-0 pointer-events-none opacity-0"}`}
-            style={{ display: viewMode === "preview" ? "block" : "none" }}
+        <ErrorBoundary key={`${refreshKey}-${retryKey}-${refreshId}`} code={code}>
+          <SandpackProvider
+            template="react"
+            theme={githubLight}
+            files={files}
+            customSetup={customSetup}
+            options={options}
           >
-            <SandpackPreview
-              showNavigator={true}
-              showRefreshButton={true}
-              style={{ height: "100%" }}
-            />
-          </div>
-          <div 
-            className={`w-full h-full absolute inset-0 ${viewMode === "code" ? "z-10" : "z-0 pointer-events-none opacity-0"}`}
-            style={{ display: viewMode === "code" ? "block" : "none" }}
-          >
-            <SandpackCodeEditor
-              showLineNumbers={true}
-              showTabs={false}
-              style={{ height: "100%" }}
-            />
-          </div>
-        </SandpackProvider>
+            {/* 预览视图：加载中显示 Loading，加载完显示 Preview */}
+            <div
+              className={`w-full h-full absolute inset-0 bg-white ${
+                viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+              }`}
+            >
+              {isLoading ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
+                  <p className="text-sm font-medium text-gray-500">AI 正在思考并生成代码...</p>
+                  <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
+                </div>
+              ) : (
+                <SandpackPreview
+                  showNavigator={false}
+                  showRefreshButton={true}
+                  showOpenInCodeSandbox={false}
+                  style={{ height: '100%' }}
+                />
+              )}
+            </div>
+
+            {/* 代码视图：始终显示编辑器，方便查看流式生成 */}
+            <div
+              className={`w-full h-full absolute inset-0 bg-white ${
+                viewMode === 'code' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+              }`}
+            >
+              {isLoading ? (
+                // Loading 时显示原生 pre 以展示流式文本，避免 Sandpack 编译错误
+                <pre className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800 whitespace-pre-wrap">
+                  {code}
+                  <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse align-middle" />
+                </pre>
+              ) : (
+                <SandpackCodeEditor
+                  showLineNumbers={true}
+                  showTabs={false}
+                  style={{ height: '100%' }}
+                  readOnly={true}
+                />
+              )}
+            </div>
+          </SandpackProvider>
+        </ErrorBoundary>
       </div>
     </div>
   );
 }
-

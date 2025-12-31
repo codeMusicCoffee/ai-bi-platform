@@ -15,7 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html  lang="zh-CN">
+            <head>
+        <link rel="preconnect" href="https://sandpack.codesandbox.io" />
+        <link rel="dns-prefetch" href="https://sandpack.codesandbox.io" />
+      </head>
       <body className={inter.className}>{children}</body>
     </html>
   );

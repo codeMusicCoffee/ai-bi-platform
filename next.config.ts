@@ -11,10 +11,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async rewrites() { 
     return [
-      // {
-      //   source: "/api/:path*",
-      //   destination: `${process.env.BACKEND_URL || "http://192.168.151.201:8000"}/:path*`,
-      // },
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:8000/api/:path*",
+      },
     ];
   },
 };

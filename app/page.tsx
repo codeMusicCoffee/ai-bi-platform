@@ -1,37 +1,35 @@
-"use client";
+'use client';
 
-import { chatService } from "@/services/chat";
-import { LayoutDashboard, Loader2, Send, Sparkles } from "lucide-react";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+import { chatService } from '@/services/chat';
+import { LayoutDashboard, Loader2, Send, Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useRef, useState } from 'react';
 
 // 动态导入组件
-const DashboardPreview = dynamic(
-  () => import("@/components/DashboardPreview"),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-400">加载中...</div>
-        </div>
+const DashboardPreview = dynamic(() => import('@/components/DashboardPreview'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-400">加载中...</div>
       </div>
-    )
-  }
-);
+    </div>
+  ),
+});
 
 export default function Home() {
-  const [userInput, setUserInput] = useState("");
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [streamingCode, setStreamingCode] = useState("");
+  const [userInput, setUserInput] = useState('');
+  const [refreshId, setRefreshId] = useState(0);
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [streamingCode, setStreamingCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [testMessage, setTestMessage] = useState("");
+  const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
 
   const handleTestHealth = async () => {
     setTestStatus('testing');
-    setTestMessage("");
+    setTestMessage('');
     try {
       const response = await chatService.testHealth();
       console.log('Health check response:', response);
@@ -44,35 +42,59 @@ export default function Home() {
     }
   };
 
+  // 自动下载 JSON 文件的辅助方法
+  const downloadJson = (data: any, filename: string) => {
+    try {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+
+      // 触发下载
+      document.body.appendChild(link);
+      link.click();
+
+      // 清理
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('下载文件失败:', e);
+    }
+  };
+
+  // 使用 ref 来防止重复提交，因为 state 更新可能是异步的
+  const isSubmittingRef = useRef(false);
+
   // 使用 EventSource 方式获取流式数据
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!userInput.trim()) return;
-    
+
+    if (!userInput.trim() || isSubmittingRef.current) return;
+
+    isSubmittingRef.current = true;
     setIsLoading(true);
     setError('');
-    setGeneratedCode("");
-    setStreamingCode("");
-    
+    setGeneratedCode('');
+    setStreamingCode('');
+
     try {
       console.log('🚀 开始调用流式 API');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.151.201:8000';
-
-      const response = await fetch(`${backendUrl}/api/chat`, {
+      const backendUrl = 'http://localhost:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
+      const response = await fetch(`${backendUrl}/api/test/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          Accept: 'text/event-stream',
         },
         body: JSON.stringify({
           messages: [
             {
-              role: "user",
-              content: userInput
-            }
+              role: 'user',
+              content: userInput,
+            },
           ],
-          provider: "deepseek",
+          provider: 'deepseek',
         }),
       });
 
@@ -90,10 +112,11 @@ export default function Home() {
       let accumulatedCode = '';
 
       let isFinished = false;
+      let lastUpdateTime = 0;
 
       while (!isFinished) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           break;
         }
@@ -104,20 +127,26 @@ export default function Home() {
 
         for (const line of lines) {
           const trimmedLine = line.trim();
-          
+
           if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
-          
+
           const data = trimmedLine.slice(6);
           if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            
+
             // 按照需求：拼接 type 为 artifact_code 的内容
             if (parsed.type === 'artifact_code') {
               const content = parsed.content || parsed.text || '';
               accumulatedCode += content;
-              setStreamingCode(accumulatedCode);
+
+              // 节流更新：每 100ms 更新一次 UI，避免 "Maximum update depth exceeded"
+              const now = Date.now();
+              if (now - lastUpdateTime > 100) {
+                setStreamingCode(accumulatedCode);
+                lastUpdateTime = now;
+              }
             } else if (parsed.type === 'artifact_end') {
               // 检测到结束标记，停止读取
               isFinished = true;
@@ -131,15 +160,17 @@ export default function Home() {
 
       if (accumulatedCode) {
         setGeneratedCode(accumulatedCode);
-        console.log('accumulatedCode',accumulatedCode)
+        console.log('accumulatedCode length:', accumulatedCode.length);
         setStreamingCode('');
+        // 生成完成，强制给 Preview 一个新 ID
+        setRefreshId((prev) => prev + 1);
       }
-
     } catch (error) {
       console.error('❌ 生成失败:', error);
       setError(error instanceof Error ? error.message : '生成失败');
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -176,41 +207,49 @@ export default function Home() {
                 className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 shadow-lg"
               >
                 {isLoading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> 生成中...</>
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> 生成中...
+                  </>
                 ) : (
-                  <><Send className="w-5 h-5" /> 生成仪表板</>
+                  <>
+                    <Send className="w-5 h-5" /> 生成仪表板
+                  </>
                 )}
               </button>
             </form>
-            
+
             <button
               onClick={handleTestHealth}
               disabled={testStatus === 'testing'}
               className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium transition-all text-sm ${
-                testStatus === 'success' 
-                  ? 'bg-green-100 text-green-700 border border-green-200' 
+                testStatus === 'success'
+                  ? 'bg-green-100 text-green-700 border border-green-200'
                   : testStatus === 'error'
                   ? 'bg-red-100 text-red-700 border border-red-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
               } disabled:opacity-50`}
             >
               {testStatus === 'testing' ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> 测试中...</>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> 测试中...
+                </>
               ) : testStatus === 'success' ? (
                 <>✅ 连接成功</>
               ) : testStatus === 'error' ? (
                 <>❌ 连接失败</>
               ) : (
-                <>🔗 测试接口</> 
+                <>🔗 测试接口</>
               )}
             </button>
-            
+
             {testMessage && (
-              <div className={`text-xs p-2 rounded-lg ${
-                testStatus === 'success' 
-                  ? 'bg-green-50 text-green-600 border border-green-200' 
-                  : 'bg-red-50 text-red-600 border border-red-200'
-              }`}>
+              <div
+                className={`text-xs p-2 rounded-lg ${
+                  testStatus === 'success'
+                    ? 'bg-green-50 text-green-600 border border-green-200'
+                    : 'bg-red-50 text-red-600 border border-red-200'
+                }`}
+              >
                 {testMessage}
               </div>
             )}
@@ -230,13 +269,6 @@ export default function Home() {
               <p className="text-sm">在左侧输入需求，AI 将为你编写并运行 React 代码</p>
             </div>
           </div>
-        ) : isLoading && !streamingCode ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
-              <p className="text-gray-500">AI 正在思考...</p>
-            </div>
-          </div>
         ) : (
           <div className="w-full h-full flex flex-col" style={{ minHeight: 0 }}>
             {/* 显示流式进度 */}
@@ -246,9 +278,13 @@ export default function Home() {
                 代码生成中... ({streamingCode.length} 字符)
               </div>
             )}
-            
+
             {/* 渲染代码预览 - 优先使用完整代码，其次使用流式代码 */}
-            <DashboardPreview code={generatedCode || streamingCode} />
+            <DashboardPreview
+              code={generatedCode || streamingCode}
+              isLoading={isLoading}
+              refreshId={refreshId}
+            />
           </div>
         )}
 
