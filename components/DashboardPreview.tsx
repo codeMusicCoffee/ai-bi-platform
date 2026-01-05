@@ -1,7 +1,7 @@
 'use client';
 
 import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
-import { githubLight } from '@codesandbox/sandpack-themes';
+import { sandpackDark } from '@codesandbox/sandpack-themes';
 import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
 import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -224,12 +224,11 @@ html, body, #root {
         </button>
       </div>
 
-      {/* 内容区域 */}
       <div className="flex-1 min-h-0 relative">
         <ErrorBoundary key={`${refreshKey}-${retryKey}-${refreshId}`} code={code}>
           <SandpackProvider
             template="react"
-            theme={githubLight}
+            theme={sandpackDark}
             files={files}
             customSetup={customSetup}
             options={options}
@@ -272,6 +271,8 @@ html, body, #root {
                 <SandpackCodeEditor
                   showLineNumbers={true}
                   showTabs={false}
+                  showInlineErrors={true}
+                  wrapContent={true}
                   style={{ height: '100%' }}
                   readOnly={true}
                 />

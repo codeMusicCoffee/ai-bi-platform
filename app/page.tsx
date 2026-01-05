@@ -1,7 +1,8 @@
 'use client';
 
+import AiChat from '@/components/AiChat';
 import { chatService } from '@/services/chat';
-import { LayoutDashboard, Loader2, Send, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [generatedCode, setGeneratedCode] = useState('');
   const [streamingCode, setStreamingCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
@@ -80,8 +82,9 @@ export default function Home() {
 
     try {
       console.log('🚀 开始调用流式 API');
-      const backendUrl = 'http://localhost:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
-      const response = await fetch(`${backendUrl}/api/test/chat`, {
+      // const backendUrl = 'http://localhost:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
+      const backendUrl = 'http://192.168.151.201:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
+      const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,6 +181,7 @@ export default function Home() {
     <main className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
       {/* 左侧控制区 */}
       <div className="w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20">
+        {/* 
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 text-indigo-600 mb-1">
             <Sparkles className="w-6 h-6" />
@@ -255,11 +259,25 @@ export default function Home() {
             )}
           </div>
         </div>
+*/}
+        <div className="h-full w-full">
+          <AiChat
+            onCodeUpdate={(code) => {
+              setGeneratedCode(code);
+              setStreamingCode(code);
+            }}
+            onCodeEnd={() => {
+              setStreamingCode('');
+              setRefreshId((prev) => prev + 1);
+            }}
+            onStatusChange={(loading) => setIsChatLoading(loading)}
+          />
+        </div>
       </div>
 
       {/* 右侧预览区 */}
       <div className="flex-1 p-6 bg-slate-100 flex flex-col relative overflow-hidden">
-        {!generatedCode && !streamingCode && !isLoading ? (
+        {!generatedCode && !streamingCode && !isLoading && !isChatLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-gray-400">
               <div className="w-20 h-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-300 flex items-center justify-center mx-auto mb-6">
@@ -272,7 +290,7 @@ export default function Home() {
         ) : (
           <div className="w-full h-full flex flex-col" style={{ minHeight: 0 }}>
             {/* 显示流式进度 */}
-            {isLoading && streamingCode && (
+            {(isLoading || isChatLoading) && streamingCode && (
               <div className="mb-2 text-xs text-gray-500 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 代码生成中... ({streamingCode.length} 字符)
@@ -282,7 +300,7 @@ export default function Home() {
             {/* 渲染代码预览 - 优先使用完整代码，其次使用流式代码 */}
             <DashboardPreview
               code={generatedCode || streamingCode}
-              isLoading={isLoading}
+              isLoading={isLoading || isChatLoading}
               refreshId={refreshId}
             />
           </div>

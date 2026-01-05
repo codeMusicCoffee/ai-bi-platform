@@ -1,0 +1,1006 @@
+{
+  "nodeId": 1,
+  "nodeName": "试销",
+  "modules": [
+    {
+      "module_id": "product_description",
+      "module_name": "品牌信息",
+      "module_type": "product_info_card",
+      "layout": {
+        "width": "100%",
+        "height": "auto",
+        "imageWidth": "500",
+        "imageHeight": "500"
+      },
+      "images": [
+        {
+          "url": "https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.alicdn.com%2Fimgextra%2Fi1%2F394316784%2FO1CN01951auF1zz7TyvOKu5_%21%21394316784.jpg&refer=http%3A%2F%2Fimg.alicdn.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1770097332&t=278463ee8aab12621800cd79a8ad45ec"
+        }
+      ],
+      "data_set": null,
+      "data": [
+        {
+          "name": "word_of_mouth",
+          "label": "口碑说辞",
+          "value": "毛铺草本酒(绿务)是劲牌公司新推出的草本白酒代表产品，采用纯粮固态工艺酿造，融合三香地标酒，每一滴陈酿都在五年以上，同时合有苦荞麦、葛根等六味草本精华，所以喝了负担小，更轻松。"
+        },
+        {
+          "name": "category",
+          "label": "品类",
+          "value": "保健酒"
+        },
+        {
+          "name": "series",
+          "label": "系列",
+          "value": "劲酒系列"
+        },
+        {
+          "name": "brand",
+          "label": "品牌",
+          "value": "中国劲酒健字号"
+        },
+        {
+          "name": "launch_date",
+          "label": "上市时间",
+          "value": "1987-02-01"
+        },
+        {
+          "name": "price_range",
+          "label": "价格区间",
+          "value": "12-109元"
+        },
+        {
+          "name": "target_crowd",
+          "label": "适合人群",
+          "value": "35-55岁中年消费者，他们具有一定保健养生意识，长期从事体力或脑力劳动"
+        },
+        {
+          "name": "drinking_way",
+          "label": "饮用方法",
+          "value": "每日50-100m(约2-3两)，不宜过量"
+        },
+        {
+          "name": "flavor_type",
+          "label": "香型",
+          "value": "清香型（基酒）"
+        },
+        {
+          "name": "ingredients",
+          "label": "组方",
+          "value": [
+            "淮山药",
+            "当归",
+            "黄芪",
+            "枸杞子",
+            "淫羊藿",
+            "仙茅",
+            "肉苁蓉",
+            "肉桂",
+            "丁香"
+          ]
+        },
+        {
+          "name": "functional_effects",
+          "label": "功效",
+          "value": [
+            "抗疲劳",
+            "免疫调节"
+          ]
+        },
+        {
+          "name": "functional_effect_ingredients",
+          "label": "功效成分",
+          "value": [
+            "皂苷类",
+            "黄丽类",
+            "活性多糖",
+            "氨基酸",
+            "有机酸"
+          ]
+        },
+        {
+          "name": "product_description",
+          "label": "品评",
+          "value": "外观：琥珀色，清亮透明；香气：复合药香+粮食香，和谐优雅；口感：口微甜，醇厚圆润，尾调回甘；饮后舒适度：相比普通白酒，宿醉感较轻(因降低有害成分)"
+        }
+      ]
+    },
+    {
+      "module_id": "product_spec",
+      "module_name": "品种信息",
+      "module_type": "product_spec",
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "data_set": null,
+      "data": [
+        {
+          "title": "产品规格",
+          "variant_dimensions": [
+            {
+              "name": "alcohol_degree",
+              "label": "酒精度",
+              "value": {
+                "unit": "°",
+                "options": [
+                  30,
+                  35,
+                  38
+                ]
+              }
+            },
+            {
+              "name": "capacity",
+              "label": "容量",
+              "value": {
+                "unit": "ml",
+                "options": [
+                  125,
+                  258,
+                  500,
+                  1000
+                ]
+              }
+            }
+          ],
+          "value": [
+            {
+              "name": "display_title",
+              "label": "展示标题",
+              "value": "35° 125ml 中国劲酒",
+              "img_url": "https://b0.bdstatic.com/46e0909f6557cf1832c9b04ef13fce20.jpg"
+            },
+            {
+              "name": "launch_date",
+              "label": "上市时间",
+              "value": "1987-02-01"
+            },
+            {
+              "name": "price",
+              "label": "产品价格",
+              "value": "16元/瓶"
+            },
+            {
+              "name": "package_type",
+              "label": "包装形式",
+              "value": "光瓶"
+            },
+            {
+              "name": "main_channels",
+              "label": "主要销售渠道",
+              "value": [
+                "商超",
+                "烟酒店",
+                "餐饮"
+              ]
+            },
+            {
+              "name": "product_tech_owner",
+              "label": "产品技术负责人",
+              "value": "XXXXXXXX"
+            },
+            {
+              "name": "product_dev_owner",
+              "label": "产品开发负责人",
+              "value": "XXXXXXXX"
+            },
+            {
+              "name": "package_dev_owner",
+              "label": "包装开发负责人",
+              "value": "XXXXXXXX"
+            },
+            {
+              "name": "retire_date",
+              "label": "退市时间",
+              "value": null
+            }
+          ]
+        },
+        {
+          "title": "产品生命周期",
+          "value": [
+            {
+              "date": "1987-01",
+              "stage": "研发",
+              "status": "completed"
+            },
+            {
+              "date": "1987-08",
+              "stage": "试销",
+              "status": "completed"
+            },
+            {
+              "date": "1987-12",
+              "stage": "上市",
+              "status": "active"
+            },
+            {
+              "date": null,
+              "stage": "退市",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module_id": "data_overview",
+      "module_name": "数据概览",
+      "module_type": "data_overview",
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "data_set": null,
+      "data": [
+        {
+          "name": "research_overview",
+          "label": "研发概况",
+          "show_type": "card",
+          "value": [
+            {
+              "name": "development_cycle",
+              "label": "研发周期（月）",
+              "value": 6
+            },
+            {
+              "name": "development_cost",
+              "label": "研发成本（万元）",
+              "value": 6.666
+            },
+            {
+              "name": "payback_period",
+              "label": "回本周期（月）",
+              "value": 15
+            },
+            {
+              "name": "five_year_roi",
+              "label": "5年ROI",
+              "value": "332.23%"
+            }
+          ]
+        },
+        {
+          "name": "cost_structure",
+          "label": "成本结构",
+          "show_type": "echart",
+          "value": {
+            "metrics": [
+              {
+                "name": "cost_ratio",
+                "label": "成本占比",
+                "chart_type": "pie",
+                "items": [
+                  {
+                    "name": "labor",
+                    "label": "人员",
+                    "value": 44
+                  },
+                  {
+                    "name": "material",
+                    "label": "材料",
+                    "value": 33
+                  },
+                  {
+                    "name": "equipment",
+                    "label": "设备",
+                    "value": 16
+                  },
+                  {
+                    "name": "other",
+                    "label": "其他",
+                    "value": 6
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "inventory_turnover",
+          "label": "库存周转",
+          "show_type": "echart",
+          "value": {
+            "unit": "天",
+            "metrics": [
+              {
+                "name": "turnover_days",
+                "label": "库存周转天数",
+                "chart_type": "bar",
+                "items": [
+                  {
+                    "name": "06",
+                    "label": "6月",
+                    "value": 7
+                  },
+                  {
+                    "name": "07",
+                    "label": "7月",
+                    "value": 7
+                  },
+                  {
+                    "name": "08",
+                    "label": "8月",
+                    "value": 9
+                  },
+                  {
+                    "name": "09",
+                    "label": "9月",
+                    "value": 14
+                  },
+                  {
+                    "name": "10",
+                    "label": "10月",
+                    "value": 18
+                  },
+                  {
+                    "name": "11",
+                    "label": "11月",
+                    "value": 21
+                  },
+                  {
+                    "name": "12",
+                    "label": "12月",
+                    "value": 25
+                  },
+                  {
+                    "name": "01",
+                    "label": "1月",
+                    "value": 26
+                  },
+                  {
+                    "name": "02",
+                    "label": "2月",
+                    "value": 21
+                  },
+                  {
+                    "name": "03",
+                    "label": "3月",
+                    "value": 18
+                  },
+                  {
+                    "name": "04",
+                    "label": "4月",
+                    "value": 14
+                  },
+                  {
+                    "name": "05",
+                    "label": "5月",
+                    "value": 9
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "sales_trend",
+          "label": "销售趋势",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "year",
+              "label": "年份"
+            },
+            "unit": "万元",
+            "metrics": [
+              {
+                "name": "annual_sales",
+                "label": "销售金额",
+                "chart_type": "bar",
+                "items": [
+                  {
+                    "name": "2010",
+                    "label": "2010年",
+                    "value": 550000
+                  },
+                  {
+                    "name": "2011",
+                    "label": "2011年",
+                    "value": 530000
+                  },
+                  {
+                    "name": "2012",
+                    "label": "2012年",
+                    "value": 510000
+                  },
+                  {
+                    "name": "2013",
+                    "label": "2013年",
+                    "value": 490000
+                  },
+                  {
+                    "name": "2014",
+                    "label": "2014年",
+                    "value": 470000
+                  },
+                  {
+                    "name": "2015",
+                    "label": "2015年",
+                    "value": 450000
+                  },
+                  {
+                    "name": "2016",
+                    "label": "2016年",
+                    "value": 430000
+                  },
+                  {
+                    "name": "2017",
+                    "label": "2017年",
+                    "value": 410000
+                  },
+                  {
+                    "name": "2018",
+                    "label": "2018年",
+                    "value": 390000
+                  },
+                  {
+                    "name": "2019",
+                    "label": "2019年",
+                    "value": 370000
+                  },
+                  {
+                    "name": "2020",
+                    "label": "2020年",
+                    "value": 350000
+                  },
+                  {
+                    "name": "2021",
+                    "label": "2021年",
+                    "value": 330000
+                  },
+                  {
+                    "name": "2022",
+                    "label": "2022年",
+                    "value": 310000
+                  },
+                  {
+                    "name": "2023",
+                    "label": "2023年",
+                    "value": 290000
+                  },
+                  {
+                    "name": "2024",
+                    "label": "2024年",
+                    "value": 270000
+                  },
+                  {
+                    "name": "2025",
+                    "label": "2025年",
+                    "value": 250000
+                  }
+                ]
+              },
+              {
+                "name": "total_sales",
+                "label": "累计销售额",
+                "chart_type": "line",
+                "axis": "right",
+                "items": [
+                  {
+                    "name": "2010",
+                    "label": "2010年",
+                    "value": 120000
+                  },
+                  {
+                    "name": "2011",
+                    "label": "2011年",
+                    "value": 250000
+                  },
+                  {
+                    "name": "2012",
+                    "label": "2012年",
+                    "value": 380000
+                  },
+                  {
+                    "name": "2013",
+                    "label": "2013年",
+                    "value": 520000
+                  },
+                  {
+                    "name": "2014",
+                    "label": "2014年",
+                    "value": 670000
+                  },
+                  {
+                    "name": "2015",
+                    "label": "2015年",
+                    "value": 820000
+                  },
+                  {
+                    "name": "2016",
+                    "label": "2016年",
+                    "value": 980000
+                  },
+                  {
+                    "name": "2017",
+                    "label": "2017年",
+                    "value": 1150000
+                  },
+                  {
+                    "name": "2018",
+                    "label": "2018年",
+                    "value": 1330000
+                  },
+                  {
+                    "name": "2019",
+                    "label": "2019年",
+                    "value": 1520000
+                  },
+                  {
+                    "name": "2020",
+                    "label": "2020年",
+                    "value": 1720000
+                  },
+                  {
+                    "name": "2021",
+                    "label": "2021年",
+                    "value": 1930000
+                  },
+                  {
+                    "name": "2022",
+                    "label": "2022年",
+                    "value": 2150000
+                  },
+                  {
+                    "name": "2023",
+                    "label": "2023年",
+                    "value": 2380000
+                  },
+                  {
+                    "name": "2024",
+                    "label": "2024年",
+                    "value": 2620000
+                  },
+                  {
+                    "name": "2025",
+                    "label": "2025年",
+                    "value": 2870000
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "category_performance",
+          "label": "分类表现",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "region",
+              "label": "区域"
+            },
+            "unit": "",
+            "metrics": [
+              {
+                "name": "distribution_range",
+                "label": "分布范围",
+                "chart_type": "map",
+                "items": [
+                  {
+                    "name": "range_1",
+                    "label": "6.2442 - 1001.657",
+                    "value": "6.2442 - 1001.657"
+                  },
+                  {
+                    "name": "range_2",
+                    "label": "1001.657 - 1997.0698",
+                    "value": "1001.657 - 1997.0698"
+                  },
+                  {
+                    "name": "range_3",
+                    "label": "1997.0698 - 2992.4826",
+                    "value": "1997.0698 - 2992.4826"
+                  },
+                  {
+                    "name": "range_4",
+                    "label": "2992.4826 - 3987.8954",
+                    "value": "2992.4826 - 3987.8954"
+                  },
+                  {
+                    "name": "range_5",
+                    "label": "3987.8954 - 4983.3082",
+                    "value": "3987.8954 - 4983.3082"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "expense_sales_trend",
+          "label": "费销比趋势",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "year",
+              "label": "年份"
+            },
+            "unit": "",
+            "metrics": [
+              {
+                "name": "expense_input",
+                "label": "费用投入",
+                "chart_type": "bar",
+                "items": [
+                  {
+                    "name": "2014",
+                    "label": "2014年",
+                    "value": 14.5
+                  },
+                  {
+                    "name": "2015",
+                    "label": "2015年",
+                    "value": 18.0
+                  },
+                  {
+                    "name": "2016",
+                    "label": "2016年",
+                    "value": 22.0
+                  },
+                  {
+                    "name": "2017",
+                    "label": "2017年",
+                    "value": 25.5
+                  },
+                  {
+                    "name": "2018",
+                    "label": "2018年",
+                    "value": 27.0
+                  },
+                  {
+                    "name": "2019",
+                    "label": "2019年",
+                    "value": 24.0
+                  },
+                  {
+                    "name": "2020",
+                    "label": "2020年",
+                    "value": 26.0
+                  },
+                  {
+                    "name": "2021",
+                    "label": "2021年",
+                    "value": 19.0
+                  },
+                  {
+                    "name": "2022",
+                    "label": "2022年",
+                    "value": 19.0
+                  },
+                  {
+                    "name": "2023",
+                    "label": "2023年",
+                    "value": 19.5
+                  },
+                  {
+                    "name": "2024",
+                    "label": "2024年",
+                    "value": 25.5
+                  },
+                  {
+                    "name": "2025",
+                    "label": "2025年",
+                    "value": 29.0
+                  }
+                ]
+              },
+              {
+                "name": "expense_sales_ratio",
+                "label": "费销比",
+                "chart_type": "line",
+                "axis": "right",
+                "unit": "%",
+                "items": [
+                  {
+                    "name": "2014",
+                    "label": "2014年",
+                    "value": 22.0
+                  },
+                  {
+                    "name": "2015",
+                    "label": "2015年",
+                    "value": 20.0
+                  },
+                  {
+                    "name": "2016",
+                    "label": "2016年",
+                    "value": 14.0
+                  },
+                  {
+                    "name": "2017",
+                    "label": "2017年",
+                    "value": 16.0
+                  },
+                  {
+                    "name": "2018",
+                    "label": "2018年",
+                    "value": 14.0
+                  },
+                  {
+                    "name": "2019",
+                    "label": "2019年",
+                    "value": 17.0
+                  },
+                  {
+                    "name": "2020",
+                    "label": "2020年",
+                    "value": 22.0
+                  },
+                  {
+                    "name": "2021",
+                    "label": "2021年",
+                    "value": 25.0
+                  },
+                  {
+                    "name": "2022",
+                    "label": "2022年",
+                    "value": 26.0
+                  },
+                  {
+                    "name": "2023",
+                    "label": "2023年",
+                    "value": 24.0
+                  },
+                  {
+                    "name": "2024",
+                    "label": "2024年",
+                    "value": 21.0
+                  },
+                  {
+                    "name": "2025",
+                    "label": "2025年",
+                    "value": 20.0
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "channel_distribution",
+          "label": "渠道分布",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "channel",
+              "label": "渠道类型"
+            },
+            "unit": "%",
+            "metrics": [
+              {
+                "name": "ratio",
+                "label": "占比",
+                "chart_type": "pie",
+                "items": [
+                  {
+                    "name": "online",
+                    "label": "线上",
+                    "value": 57.0
+                  },
+                  {
+                    "name": "offline",
+                    "label": "线下",
+                    "value": 42.0
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "input_distribution",
+          "label": "投入分布",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "category",
+              "label": "投入类别"
+            },
+            "unit": "%",
+            "metrics": [
+              {
+                "name": "ratio",
+                "label": "占比",
+                "chart_type": "pie",
+                "items": [
+                  {
+                    "name": "marketing",
+                    "label": "营销",
+                    "value": 47.06
+                  },
+                  {
+                    "name": "channel",
+                    "label": "渠道",
+                    "value": 35.29
+                  },
+                  {
+                    "name": "admin",
+                    "label": "行政",
+                    "value": 17.65
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_overview",
+          "label": "市场概况",
+          "show_type": "card",
+          "value": [
+            {
+              "name": "market_coverage_count",
+              "label": "市场覆盖数",
+              "value": 666
+            },
+            {
+              "name": "terminal_coverage_count",
+              "label": "终端覆盖数",
+              "value": 6666
+            },
+            {
+              "name": "market_coverage_rate",
+              "label": "市场覆盖率",
+              "value": "87.78%"
+            },
+            {
+              "name": "terminal_coverage_rate",
+              "label": "终端覆盖率",
+              "value": "87.78%"
+            }
+          ]
+        },
+        {
+          "name": "consumer_evaluation",
+          "label": "消费者评价",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "keyword",
+              "label": "关键词"
+            },
+            "unit": "",
+            "metrics": [
+              {
+                "name": "sentiment",
+                "label": "评价热度",
+                "chart_type": "wordCloud",
+                "items": [
+                  {
+                    "name": "refreshing",
+                    "label": "清爽",
+                    "value": 100
+                  },
+                  {
+                    "name": "tasty",
+                    "label": "好喝",
+                    "value": 85
+                  },
+                  {
+                    "name": "effective",
+                    "label": "有效",
+                    "value": 80
+                  },
+                  {
+                    "name": "famous",
+                    "label": "有名气",
+                    "value": 70
+                  },
+                  {
+                    "name": "sober_fast",
+                    "label": "醒酒快",
+                    "value": 65
+                  },
+                  {
+                    "name": "mellow",
+                    "label": "醇香",
+                    "value": 60
+                  },
+                  {
+                    "name": "good_function",
+                    "label": "功能好",
+                    "value": 60
+                  },
+                  {
+                    "name": "high_end",
+                    "label": "高端",
+                    "value": 50
+                  },
+                  {
+                    "name": "prestige",
+                    "label": "面子",
+                    "value": 45
+                  },
+                  {
+                    "name": "healthy",
+                    "label": "身体好",
+                    "value": 45
+                  },
+                  {
+                    "name": "gifting",
+                    "label": "适合送礼",
+                    "value": 40
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_performance",
+          "label": "市场表现",
+          "show_type": "echart",
+          "value": {
+            "dimension": {
+              "name": "office",
+              "label": "办事处"
+            },
+            "unit": "",
+            "metrics": [
+              {
+                "name": "performance_score",
+                "label": "业绩数值",
+                "chart_type": "bar",
+                "items": [
+                  {
+                    "name": "hubei",
+                    "label": "湖北办",
+                    "value": 68976
+                  },
+                  {
+                    "name": "guangzhou",
+                    "label": "广州办",
+                    "value": 67869
+                  },
+                  {
+                    "name": "fujian",
+                    "label": "福建办",
+                    "value": 56785
+                  },
+                  {
+                    "name": "shandong",
+                    "label": "山东办",
+                    "value": 54754
+                  },
+                  {
+                    "name": "jiangzhe",
+                    "label": "江浙办",
+                    "value": 45354
+                  },
+                  {
+                    "name": "hunan",
+                    "label": "湖南办",
+                    "value": 32425
+                  },
+                  {
+                    "name": "shanxi",
+                    "label": "山西办",
+                    "value": 31753
+                  },
+                  {
+                    "name": "jingjin",
+                    "label": "京津办",
+                    "value": 28674
+                  },
+                  {
+                    "name": "henan",
+                    "label": "河南办",
+                    "value": 26534
+                  },
+                  {
+                    "name": "chuancang",
+                    "label": "川藏办",
+                    "value": 24334
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
