@@ -217,10 +217,7 @@ export default function AiChat({
           Accept: 'text/event-stream',
         },
         body: JSON.stringify({
-          messages: [
-            ...messages.map((m) => ({ role: m.role, content: m.content })),
-            { role: 'user', content: userText },
-          ],
+          messages: [{ role: 'user', content: userText }],
           session_id: currentSessionId,
         }),
       });
