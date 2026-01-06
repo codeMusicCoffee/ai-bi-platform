@@ -1,22 +1,11 @@
 'use client';
 
 import AiChat from '@/components/AiChat';
+import DashboardPreview from '@/components/DashboardPreview';
+import FullScreenToggle from '@/components/FullScreenToggle';
 import { chatService } from '@/services/chat';
-import { LayoutDashboard, Loader2 } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { LayoutDashboard } from 'lucide-react';
 import { useRef, useState } from 'react';
-
-// 动态导入组件
-const DashboardPreview = dynamic(() => import('@/components/DashboardPreview'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-gray-400">加载中...</div>
-      </div>
-    </div>
-  ),
-});
 
 export default function Home() {
   const [userInput, setUserInput] = useState('');
@@ -28,6 +17,7 @@ export default function Home() {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleTestHealth = async () => {
     setTestStatus('testing');
@@ -179,87 +169,12 @@ export default function Home() {
 
   return (
     <main className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
-      {/* 左侧控制区 */}
-      <div className="w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20">
-        {/* 
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 text-indigo-600 mb-1">
-            <Sparkles className="w-6 h-6" />
-            <h1 className="text-xl font-bold">Generative BI Local</h1>
-          </div>
-          <p className="text-xs text-gray-400">Powered by Gemini Pro & Sandpack</p>
-        </div>
-
-        <div className="flex-1 p-6 flex flex-col gap-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-              描述你的需求
-            </label>
-            <textarea
-              className="w-full h-48 p-4 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all resize-none outline-none"
-              placeholder="例如：帮我画一个物流监控看板，要有深色主题，包含运输地图（散点图）和延迟率趋势..."
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-            />
-          </div>
-
-          <div className="mt-auto space-y-3">
-            <form onSubmit={handleGenerate}>
-              <button
-                type="submit"
-                disabled={isLoading || !userInput.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 shadow-lg"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" /> 生成中...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" /> 生成仪表板
-                  </>
-                )}
-              </button>
-            </form>
-
-            <button
-              onClick={handleTestHealth}
-              disabled={testStatus === 'testing'}
-              className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium transition-all text-sm ${
-                testStatus === 'success'
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : testStatus === 'error'
-                  ? 'bg-red-100 text-red-700 border border-red-200'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
-              } disabled:opacity-50`}
-            >
-              {testStatus === 'testing' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> 测试中...
-                </>
-              ) : testStatus === 'success' ? (
-                <>✅ 连接成功</>
-              ) : testStatus === 'error' ? (
-                <>❌ 连接失败</>
-              ) : (
-                <>🔗 测试接口</>
-              )}
-            </button>
-
-            {testMessage && (
-              <div
-                className={`text-xs p-2 rounded-lg ${
-                  testStatus === 'success'
-                    ? 'bg-green-50 text-green-600 border border-green-200'
-                    : 'bg-red-50 text-red-600 border border-red-200'
-                }`}
-              >
-                {testMessage}
-              </div>
-            )}
-          </div>
-        </div>
-*/}
+      {/* 左侧控制区 - 全屏时隐藏 */}
+      <div
+        className={`w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20 transition-all duration-300 ${
+          isFullScreen ? 'hidden' : ''
+        }`}
+      >
         <div className="h-full w-full">
           <AiChat
             onCodeUpdate={(code) => {
@@ -268,7 +183,6 @@ export default function Home() {
             }}
             onCodeEnd={() => {
               setStreamingCode('');
-              setRefreshId((prev) => prev + 1);
             }}
             onStatusChange={(loading) => setIsChatLoading(loading)}
           />
@@ -290,20 +204,24 @@ export default function Home() {
         ) : (
           <div className="w-full h-full flex flex-col" style={{ minHeight: 0 }}>
             {/* 显示流式进度 */}
-            {(isLoading || isChatLoading) && streamingCode && (
-              <div className="mb-2 text-xs text-gray-500 flex items-center gap-2">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                代码生成中... ({streamingCode.length} 字符)
-              </div>
-            )}
 
             {/* 渲染代码预览 - 优先使用完整代码，其次使用流式代码 */}
             <DashboardPreview
               code={generatedCode || streamingCode}
               isLoading={isLoading || isChatLoading}
               refreshId={refreshId}
+              isFullScreen={isFullScreen}
             />
           </div>
+        )}
+
+        {/* 全屏切换按钮 - 仅在有内容时显示 */}
+        {(generatedCode || streamingCode || isLoading || isChatLoading) && (
+          <FullScreenToggle
+            isFullScreen={isFullScreen}
+            onToggle={() => setIsFullScreen(!isFullScreen)}
+            className="absolute top-9 right-12"
+          />
         )}
 
         {/* 错误提示 */}

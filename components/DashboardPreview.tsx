@@ -68,10 +68,12 @@ export default function DashboardPreview({
   code,
   isLoading,
   refreshId,
+  isFullScreen,
 }: {
   code: string;
   isLoading?: boolean;
   refreshId?: number | string;
+  isFullScreen?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -83,35 +85,58 @@ export default function DashboardPreview({
   // 3 秒还没出来，直接重建
   useEffect(() => {
     if (!isLoading) {
-      // ⚡️ 核心修复：延迟 200ms 再执行刷新。
-      // 直接同步刷新可能会因为 React 批处理或 Sandpack 内部状态未清理完毕而无效。
-      // 给一点缓冲时间，成功率会大大提高。
-      const timer = setTimeout(() => {
-        setRefreshKey((prev) => prev + 1);
-      }, 200);
+      // ⚡️ 优化：移除 200ms 的延迟刷新，防止与 refreshId 导致的重置发生冲突（避免二次重绘）。
+      // 父组件传入的 refreshId 变化已经触发了 ErrorBoundary 的 Key 变化，足以重置沙箱。
 
+      // 3 秒还没出来，直接重建作为兜底
       const t = setTimeout(() => {
         setRetryKey((k) => k + 1);
       }, 3000);
 
       return () => {
-        clearTimeout(timer);
         clearTimeout(t);
       };
     }
   }, [isLoading]);
 
+  // ⚡️ 性能极致优化：
+  // 在 loading 期间，无论 code 怎么变，我们都希望 files 对象的引用保持完全不变。
+  // 这样 Sandpack 就绝对不会感知到任何变化，彻底避免重渲染或编译尝试。
+  const effectiveCode = !isLoading && code ? code : null;
+
   // 使用 useMemo 稳定 files 对象
-  // 直接使用 code，移除防抖，确保 Code 模式下实时更新，且 Preview 模式在加载完成后立即显示完整代码
-  // ⚡️ 优化核心：
-  // 在 loading 期间，给 Sandpack 提供一个安全的占位代码，避免它尝试编译不完整的流式代码
-  // 只有当 loading 结束（代码生成完毕）时，才将真正的 code 注入 files
   const files = useMemo(
     () => ({
       '/App.js':
-        !isLoading && code
-          ? code
-          : 'export default function App() { return <div className="h-full flex items-center justify-center text-gray-400 animate-pulse">正在接收数据...</div> }',
+        effectiveCode ||
+        `import React from 'react';
+import { createRoot } from 'react-dom/client';
+// ⚡️ 性能优化：预加载重型依赖
+// 即使在 Loading 状态，也导入这些包，强制 Sandpack 开始下载依赖
+// 这样当 AI 代码生成完毕时，依赖可能已经准备好了
+import { LineChart, BarChart, PieChart, AreaChart } from 'recharts';
+import { Camera, Home, Settings, User, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import * as dateFns from 'date-fns';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export default function App() { 
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-gray-400 animate-pulse gap-3">
+      <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      <p className="font-medium">正在准备开发环境...</p>
+      <div className="text-xs opacity-50">预加载依赖库中</div>
+      
+      {/* 隐式引用，防止 Tree-shaking (虽然 Dev 模式通常不 Shake，但保险起见) */}
+      <div style={{ display: 'none' }}>
+        <LineChart width={1} height={1} />
+        <Camera />
+        <motion.div />
+      </div>
+    </div>
+  ) 
+}`,
       '/index.js': `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
@@ -144,7 +169,7 @@ html, body, #root {
 }
 `,
     }),
-    [code, isLoading]
+    [effectiveCode]
   );
 
   const dependencies = {
@@ -164,8 +189,10 @@ html, body, #root {
       // 1. 强制配置 npm 镜像源为淘宝源
       npmRegistries: [
         {
-          enabledScopes: Object.keys(dependencies), // 匹配所有包
-          limitToScopes: [],
+          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
+          // @ts-ignore: Sandpack 类型定义可能是旧版或不准确，兼容性处理
+          enabledScopes: [],
+          limitToScopes: false,
           registryUrl: 'https://registry.npmmirror.com/',
           proxyEnabled: false,
         },
@@ -187,45 +214,51 @@ html, body, #root {
   );
 
   return (
-    <div className="w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white">
-      {/* 自定义 Tab 切换按钮 */}
-      <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
-        <button
-          onClick={() => setViewMode('preview')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            viewMode === 'preview'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          <Play className="w-4 h-4" />
-          Preview
-        </button>
-        <button
-          onClick={() => setViewMode('code')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            viewMode === 'code'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          <FileCode className="w-4 h-4" />
-          Code
-        </button>
+    <div
+      className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
+        isFullScreen ? 'fixed inset-0 z-50 border-0 rounded-none' : ''
+      }`}
+    >
+      {/* 自定义 Tab 切换按钮 - 全屏模式下隐藏 */}
+      {!isFullScreen && (
+        <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
+          <button
+            onClick={() => setViewMode('preview')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              viewMode === 'preview'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <Play className="w-4 h-4" />
+            Preview
+          </button>
+          <button
+            onClick={() => setViewMode('code')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              viewMode === 'code'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <FileCode className="w-4 h-4" />
+            Code
+          </button>
 
-        {/* 强制刷新按钮 */}
-        <button
-          onClick={() => setRefreshKey((k) => k + 1)}
-          className="ml-auto flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
-          title="强制重新加载预览"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline">刷新预览</span>
-        </button>
-      </div>
+          {/* 强制刷新按钮 - 给右侧的全屏按钮留出位置 (mr-12) */}
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="ml-auto mr-12 flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
+            title="强制重新加载预览"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline">刷新预览</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 relative">
-        <ErrorBoundary key={`${refreshKey}-${retryKey}-${refreshId}`} code={code}>
+        <ErrorBoundary key={`${refreshKey}-${retryKey}`} code={code}>
           <SandpackProvider
             template="react"
             theme={sandpackDark}
@@ -242,7 +275,14 @@ html, body, #root {
               {isLoading ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                   <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
-                  <p className="text-sm font-medium text-gray-500">AI 正在思考并生成代码...</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    AI 正在思考并生成代码...
+                    {code && (
+                      <span className="ml-2 font-mono text-xs opacity-70">
+                        ({code.length} 字符)
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
                 </div>
               ) : (

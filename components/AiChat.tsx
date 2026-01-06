@@ -183,7 +183,8 @@ export default function AiChat({
     if (!sessionId) return;
     const fetchSession = async () => {
       try {
-        updateLoadingState(true);
+        // 仅设置本地 Loading，不触发父组件的 Generating 状态
+        setIsLoading(true);
         const backendUrl = 'http://192.168.151.201:8000';
         const res = await fetch(`${backendUrl}/api/sessions/${sessionId}`);
 
@@ -210,7 +211,7 @@ export default function AiChat({
       } catch (error) {
         console.error('Error loading session:', error);
       } finally {
-        updateLoadingState(false);
+        setIsLoading(false);
       }
     };
 
