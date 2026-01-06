@@ -207,7 +207,7 @@ html, body, #root {
       externalResources: ['https://cdn.tailwindcss.com'],
       // 关键：禁用统计
       enableAnalytics: false,
-      recompileMode: 'delayed',
+      recompileMode: 'delayed' as const,
       recompileDelay: 500,
     }),
     []
@@ -314,7 +314,7 @@ html, body, #root {
                   showInlineErrors={true}
                   wrapContent={true}
                   style={{ height: '100%' }}
-                  readOnly={true}
+                  readOnly={false}
                 />
               )}
             </div>

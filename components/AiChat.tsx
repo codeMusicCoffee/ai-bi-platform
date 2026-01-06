@@ -53,7 +53,7 @@ const AttachmentPreview = () => {
   if (files.length === 0) return null;
 
   return (
-    <PromptInputAttachments className="pb-2">
+    <PromptInputAttachments className="pb-0">
       {(file) => <PromptInputAttachment key={file.id} data={file} />}
     </PromptInputAttachments>
   );
@@ -157,6 +157,59 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
   }, [files, sessionId, setSessionId, onDatasetUploaded]);
 
   return null;
+};
+
+// Sub-component to handle drag and drop for the entire chat area
+const ChatDragDropArea = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const { add } = usePromptInputAttachments();
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      add(droppedFiles);
+    }
+  };
+
+  return (
+    <div
+      className={cn('relative', className)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDropCapture={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-indigo-50/90 border-2 border-indigo-500 border-dashed rounded-xl flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
+          <Paperclip className="w-8 h-8 text-indigo-500 mb-1 animate-bounce" />
+          <p className="text-sm font-bold text-indigo-700">放入json,csv文件</p>
+        </div>
+      )}
+      {children}
+    </div>
+  );
 };
 
 export default function AiChat({
@@ -427,109 +480,111 @@ export default function AiChat({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100 shrink-0">
-        <div className="flex items-center gap-2 text-indigo-600 mb-1">
-          <Sparkles className="w-5 h-5" />
-          <h1 className="text-lg font-bold">Generative BI Local</h1>
+    <PromptInputProvider>
+      <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
+      <div className="flex flex-col h-full bg-white">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2 text-indigo-600 mb-1">
+            <Sparkles className="w-5 h-5" />
+            <h1 className="text-lg font-bold">Generative BI Local</h1>
+          </div>
+          <p className="text-xs text-gray-400">Powered by Gemini Pro & Sandpack</p>
         </div>
-        <p className="text-xs text-gray-400">Powered by Gemini Pro & Sandpack</p>
-      </div>
 
-      {/* Chat Area */}
-      <Conversation className="flex-1 bg-slate-50">
-        <ConversationContent className="p-4 gap-6">
-          {messages.length === 0 ? (
-            <ConversationEmptyState
-              icon={<Sparkles className="w-10 h-10 opacity-30" />}
-              title="描述你的需求"
-              description="例如：帮我画一个物流监控看板，要有深色主题，包含运输地图和延迟率趋势..."
-            />
-          ) : (
-            messages.map((msg, index) => (
-              <Message key={msg.id} from={msg.role}>
-                <MessageContent
-                  className={cn(
-                    'text-sm',
-                    msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3',
-                    msg.role === 'user' && '!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3'
-                  )}
-                >
-                  {msg.content ? (
-                    msg.role === 'assistant' ? (
-                      <div className="prose prose-sm max-w-none">
-                        {/* Parse and render thinking blocks vs main content */}
-                        {(() => {
-                          // Match think block, handling both closed and unclosed (streaming) tags
-                          const thinkMatch = msg.content.match(/<think>([\s\S]*?)(?:<\/think>|$)/);
-                          const thinkContent = thinkMatch ? thinkMatch[1] : null;
+        {/* Chat Area */}
+        <Conversation className="flex-1 bg-slate-50">
+          <ConversationContent className="p-4 gap-6">
+            {messages.length === 0 ? (
+              <ConversationEmptyState
+                icon={<Sparkles className="w-10 h-10 opacity-30" />}
+                title="描述你的需求"
+                description="例如：帮我画一个物流监控看板，要有深色主题，包含运输地图和延迟率趋势..."
+              />
+            ) : (
+              messages.map((msg, index) => (
+                <Message key={msg.id} from={msg.role}>
+                  <MessageContent
+                    className={cn(
+                      'text-sm',
+                      msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3',
+                      msg.role === 'user' && '!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3'
+                    )}
+                  >
+                    {msg.content ? (
+                      msg.role === 'assistant' ? (
+                        <div className="prose prose-sm max-w-none">
+                          {/* Parse and render thinking blocks vs main content */}
+                          {(() => {
+                            // Match think block, handling both closed and unclosed (streaming) tags
+                            const thinkMatch = msg.content.match(
+                              /<think>([\s\S]*?)(?:<\/think>|$)/
+                            );
+                            const thinkContent = thinkMatch ? thinkMatch[1] : null;
 
-                          // Determine if thinking is still active or ended
-                          const hasThinkingEnded = msg.content.includes('</think>');
-                          const isThinking = msg.content.includes('<think>') && !hasThinkingEnded;
+                            // Determine if thinking is still active or ended
+                            const hasThinkingEnded = msg.content.includes('</think>');
+                            const isThinking = msg.content.includes('<think>') && !hasThinkingEnded;
 
-                          let mainContent = msg.content.replace(
-                            /<think>[\s\S]*?(?:<\/think>|$)/,
-                            ''
-                          );
-                          // Remove artifact blocks and self-closing tags
-                          mainContent = mainContent.replace(/<artifact[\s\S]*?<\/artifact>/g, '');
-                          mainContent = mainContent.replace(/<artifact[^>]*\/>/g, '');
-                          mainContent = mainContent.trim();
+                            let mainContent = msg.content.replace(
+                              /<think>[\s\S]*?(?:<\/think>|$)/,
+                              ''
+                            );
+                            // Remove artifact blocks and self-closing tags
+                            mainContent = mainContent.replace(/<artifact[\s\S]*?<\/artifact>/g, '');
+                            mainContent = mainContent.replace(/<artifact[^>]*\/>/g, '');
+                            mainContent = mainContent.trim();
 
-                          return (
-                            <>
-                              {thinkContent && (
-                                <div className="bg-gray-50 border-l-2 border-gray-300 pl-3 py-2 mb-3 text-gray-500 italic text-xs rounded-r">
-                                  <div className="font-semibold not-italic mb-1 text-gray-400 flex items-center gap-2">
-                                    <span>Thinking Process</span>
-                                    {isThinking && (
-                                      <div className="flex items-center gap-1 text-blue-500">
-                                        <span className="text-xs">AI思考中</span>
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="whitespace-pre-wrap">{thinkContent}</div>
-                                </div>
-                              )}
-
-                              {/* Loading for Dashboard Generation: Show after think ends, before message appears */}
-                              {hasThinkingEnded &&
-                                !mainContent &&
-                                isLoading &&
-                                index === messages.length - 1 && (
-                                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
-                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                                    <span>看板生成中...</span>
+                            return (
+                              <>
+                                {thinkContent && (
+                                  <div className="bg-gray-50 border-l-2 border-gray-300 pl-3 py-2 mb-3 text-gray-500 italic text-xs rounded-r">
+                                    <div className="font-semibold not-italic mb-1 text-gray-400 flex items-center gap-2">
+                                      <span>Thinking Process</span>
+                                      {isThinking && (
+                                        <div className="flex items-center gap-1 text-blue-500">
+                                          <span className="text-xs">AI思考中</span>
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="whitespace-pre-wrap">{thinkContent}</div>
                                   </div>
                                 )}
 
-                              {mainContent && <Markdown>{mainContent}</Markdown>}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
-                    )
-                  ) : (
-                    isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  )}
-                </MessageContent>
-              </Message>
-            ))
-          )}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+                                {/* Loading for Dashboard Generation: Show after think ends, before message appears */}
+                                {hasThinkingEnded &&
+                                  !mainContent &&
+                                  isLoading &&
+                                  index === messages.length - 1 && (
+                                    <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                                      <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                                      <span>看板生成中...</span>
+                                    </div>
+                                  )}
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-100 bg-white shrink-0">
-        <PromptInputProvider>
-          <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
-          <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all bg-white">
+                                {mainContent && <Markdown>{mainContent}</Markdown>}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      )
+                    ) : (
+                      isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    )}
+                  </MessageContent>
+                </Message>
+              ))
+            )}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+
+        {/* Input Area */}
+        <div className="p-4 border-t border-gray-100 bg-white shrink-0">
+          <ChatDragDropArea className="border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all bg-white">
             <AttachmentPreview />
             <PromptInput
               maxFiles={5}
@@ -540,8 +595,8 @@ export default function AiChat({
               <AttachmentButton />
               <PromptTextarea
                 name="message"
-                placeholder="描述你的需求，或上传数据文件..."
-                className="min-h-[60px] max-h-[200px] text-sm"
+                placeholder="描述您的需求，或拖拽上传csv,json数据文件（支持拖拽）..."
+                className="h-[100px] text-sm"
               />
               <InputGroupButton
                 disabled={isLoading || isLoadingProps}
@@ -555,9 +610,9 @@ export default function AiChat({
                 )}
               </InputGroupButton>
             </PromptInput>
-          </div>
-        </PromptInputProvider>
+          </ChatDragDropArea>
+        </div>
       </div>
-    </div>
+    </PromptInputProvider>
   );
 }
