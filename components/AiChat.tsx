@@ -207,6 +207,25 @@ export default function AiChat({
             timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
           }));
           setMessages(history);
+
+          // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
+          // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
+          const lastMsg = data.messages[data.messages.length - 1];
+          if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
+            const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
+            // 只处理 react 类型的 artifact，且包含 code
+            if (lastArtifact.type === 'react' && lastArtifact.code) {
+              console.log('Restoring code from history artifact:', lastArtifact.title);
+              if (onCodeUpdate) {
+                // 更新代码内容
+                onCodeUpdate(lastArtifact.code);
+              }
+              if (onCodeEnd) {
+                // 标记生成/流式传输结束，确保状态为"完成"
+                onCodeEnd();
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading session:', error);
