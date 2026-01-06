@@ -1,7 +1,7 @@
 'use client';
 
 import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
-import { sandpackDark } from '@codesandbox/sandpack-themes';
+import { githubLight } from '@codesandbox/sandpack-themes';
 import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
 import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -69,12 +69,10 @@ export default function DashboardPreview({
   isLoading,
   refreshId,
   isFullScreen,
-  isFullScreen,
 }: {
   code: string;
   isLoading?: boolean;
   refreshId?: number | string;
-  isFullScreen?: boolean;
   isFullScreen?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -87,10 +85,6 @@ export default function DashboardPreview({
   // 3 秒还没出来，直接重建
   useEffect(() => {
     if (!isLoading) {
-      // ⚡️ 优化：移除 200ms 的延迟刷新，防止与 refreshId 导致的重置发生冲突（避免二次重绘）。
-      // 父组件传入的 refreshId 变化已经触发了 ErrorBoundary 的 Key 变化，足以重置沙箱。
-
-      // 3 秒还没出来，直接重建作为兜底
       // ⚡️ 优化：移除 200ms 的延迟刷新，防止与 refreshId 导致的重置发生冲突（避免二次重绘）。
       // 父组件传入的 refreshId 变化已经触发了 ErrorBoundary 的 Key 变化，足以重置沙箱。
 
@@ -199,10 +193,6 @@ html, body, #root {
           // @ts-ignore: Sandpack 类型定义可能是旧版或不准确，兼容性处理
           enabledScopes: [],
           limitToScopes: false,
-          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-          // @ts-ignore: Sandpack 类型定义可能是旧版或不准确，兼容性处理
-          enabledScopes: [],
-          limitToScopes: false,
           registryUrl: 'https://registry.npmmirror.com/',
           proxyEnabled: false,
         },
@@ -254,48 +244,7 @@ html, body, #root {
             <FileCode className="w-4 h-4" />
             Code
           </button>
-    <div
-      className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
-        isFullScreen ? 'fixed inset-0 z-50 border-0 rounded-none' : ''
-      }`}
-    >
-      {/* 自定义 Tab 切换按钮 - 全屏模式下隐藏 */}
-      {!isFullScreen && (
-        <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setViewMode('preview')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'preview'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <Play className="w-4 h-4" />
-            Preview
-          </button>
-          <button
-            onClick={() => setViewMode('code')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'code'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <FileCode className="w-4 h-4" />
-            Code
-          </button>
 
-          {/* 强制刷新按钮 - 给右侧的全屏按钮留出位置 (mr-12) */}
-          <button
-            onClick={() => setRefreshKey((k) => k + 1)}
-            className="ml-auto mr-12 flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
-            title="强制重新加载预览"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline">刷新预览</span>
-          </button>
-        </div>
-      )}
           {/* 强制刷新按钮 - 给右侧的全屏按钮留出位置 (mr-12) */}
           <button
             onClick={() => setRefreshKey((k) => k + 1)}
@@ -312,7 +261,7 @@ html, body, #root {
         <ErrorBoundary key={`${refreshKey}-${retryKey}`} code={code}>
           <SandpackProvider
             template="react"
-            theme={sandpackDark}
+            theme={githubLight}
             files={files}
             customSetup={customSetup}
             options={options}

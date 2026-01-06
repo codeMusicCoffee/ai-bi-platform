@@ -18,7 +18,6 @@ export default function Home() {
   const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleTestHealth = async () => {
     setTestStatus('testing');
@@ -35,147 +34,11 @@ export default function Home() {
     }
   };
 
-  // 自动下载 JSON 文件的辅助方法
-  const downloadJson = (data: any, filename: string) => {
-    try {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-
-      // 触发下载
-      document.body.appendChild(link);
-      link.click();
-
-      // 清理
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('下载文件失败:', e);
-    }
-  };
-
   // 使用 ref 来防止重复提交，因为 state 更新可能是异步的
   const isSubmittingRef = useRef(false);
 
-  // 使用 EventSource 方式获取流式数据
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!userInput.trim() || isSubmittingRef.current) return;
-
-    isSubmittingRef.current = true;
-    setIsLoading(true);
-    setError('');
-    setGeneratedCode('');
-    setStreamingCode('');
-
-    try {
-      console.log('🚀 开始调用流式 API');
-      // const backendUrl = 'http://localhost:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
-      const backendUrl = 'http://192.168.151.201:8000'; //、、||process.env.NEXT_PUBLIC_BACKEND_URL
-      const response = await fetch(`${backendUrl}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              content: userInput,
-            },
-          ],
-          provider: 'deepseek',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('无法获取响应流');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulatedCode = '';
-
-      let isFinished = false;
-      let lastUpdateTime = 0;
-
-      while (!isFinished) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-
-          if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
-
-          const data = trimmedLine.slice(6);
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-
-            // 按照需求：拼接 type 为 artifact_code 的内容
-            if (parsed.type === 'artifact_code') {
-              const content = parsed.content || parsed.text || '';
-              accumulatedCode += content;
-
-              // 节流更新：每 100ms 更新一次 UI，避免 "Maximum update depth exceeded"
-              const now = Date.now();
-              if (now - lastUpdateTime > 100) {
-                setStreamingCode(accumulatedCode);
-                lastUpdateTime = now;
-              }
-            } else if (parsed.type === 'artifact_end') {
-              // 检测到结束标记，停止读取
-              isFinished = true;
-              break;
-            }
-          } catch (e) {
-            console.warn('解析响应出错:', e);
-          }
-        }
-      }
-
-      if (accumulatedCode) {
-        setGeneratedCode(accumulatedCode);
-        console.log('accumulatedCode length:', accumulatedCode.length);
-        setStreamingCode('');
-        // 生成完成，强制给 Preview 一个新 ID
-        setRefreshId((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error('❌ 生成失败:', error);
-      setError(error instanceof Error ? error.message : '生成失败');
-    } finally {
-      setIsLoading(false);
-      isSubmittingRef.current = false;
-    }
-  };
-
   return (
     <main className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
-      {/* 左侧控制区 - 全屏时隐藏 */}
-      <div
-        className={`w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20 transition-all duration-300 ${
-          isFullScreen ? 'hidden' : ''
-        }`}
-      >
       {/* 左侧控制区 - 全屏时隐藏 */}
       <div
         className={`w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20 transition-all duration-300 ${
@@ -210,26 +73,14 @@ export default function Home() {
           </div>
         ) : (
           <div className="w-full h-full flex flex-col" style={{ minHeight: 0 }}>
-            {/* 显示流式进度 */}
-
             {/* 渲染代码预览 - 优先使用完整代码，其次使用流式代码 */}
             <DashboardPreview
               code={generatedCode || streamingCode}
               isLoading={isLoading || isChatLoading}
               refreshId={refreshId}
               isFullScreen={isFullScreen}
-              isFullScreen={isFullScreen}
             />
           </div>
-        )}
-
-        {/* 全屏切换按钮 - 仅在有内容时显示 */}
-        {(generatedCode || streamingCode || isLoading || isChatLoading) && (
-          <FullScreenToggle
-            isFullScreen={isFullScreen}
-            onToggle={() => setIsFullScreen(!isFullScreen)}
-            className="absolute top-9 right-12"
-          />
         )}
 
         {/* 全屏切换按钮 - 仅在有内容时显示 */}
