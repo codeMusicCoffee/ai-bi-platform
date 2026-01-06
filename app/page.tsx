@@ -18,6 +18,7 @@ export default function Home() {
   const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleTestHealth = async () => {
     setTestStatus('testing');
@@ -175,6 +176,12 @@ export default function Home() {
           isFullScreen ? 'hidden' : ''
         }`}
       >
+      {/* 左侧控制区 - 全屏时隐藏 */}
+      <div
+        className={`w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-xl z-20 transition-all duration-300 ${
+          isFullScreen ? 'hidden' : ''
+        }`}
+      >
         <div className="h-full w-full">
           <AiChat
             onCodeUpdate={(code) => {
@@ -211,8 +218,18 @@ export default function Home() {
               isLoading={isLoading || isChatLoading}
               refreshId={refreshId}
               isFullScreen={isFullScreen}
+              isFullScreen={isFullScreen}
             />
           </div>
+        )}
+
+        {/* 全屏切换按钮 - 仅在有内容时显示 */}
+        {(generatedCode || streamingCode || isLoading || isChatLoading) && (
+          <FullScreenToggle
+            isFullScreen={isFullScreen}
+            onToggle={() => setIsFullScreen(!isFullScreen)}
+            className="absolute top-9 right-12"
+          />
         )}
 
         {/* 全屏切换按钮 - 仅在有内容时显示 */}
