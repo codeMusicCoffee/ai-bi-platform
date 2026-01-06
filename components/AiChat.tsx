@@ -88,6 +88,77 @@ function dataURLtoFile(dataurl: string, filename: string) {
   return new File([u8arr], filename, { type: mime });
 }
 
+const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: string) => void }) => {
+  const { files } = usePromptInputAttachments();
+  const { sessionId, setSessionId } = useChatStore();
+  const uploadedFileIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleUpload = async () => {
+      const backendUrl = 'http://192.168.151.201:8000';
+
+      for (const filePart of files) {
+        if (uploadedFileIds.current.has(filePart.id)) continue;
+        if (!filePart.url) continue;
+
+        uploadedFileIds.current.add(filePart.id);
+
+        let file: File | null = null;
+        if (filePart.url.startsWith('blob:')) {
+          try {
+            const response = await fetch(filePart.url);
+            const blob = await response.blob();
+            file = new File([blob], filePart.filename || 'file', { type: blob.type });
+          } catch (error) {
+            console.error('Error fetching blob:', error);
+          }
+        } else {
+          file = dataURLtoFile(filePart.url, filePart.filename || 'file');
+        }
+
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          // Only append session_id if it exists
+          if (sessionId) {
+            formData.append('session_id', sessionId);
+          }
+
+          try {
+            console.log('Auto uploading file:', file.name);
+            const uploadRes = await fetch(`${backendUrl}/api/datasets`, {
+              method: 'POST',
+              body: formData,
+            });
+            if (!uploadRes.ok) {
+              console.error('File upload failed', await uploadRes.text());
+              uploadedFileIds.current.delete(filePart.id);
+            } else {
+              const data = await uploadRes.json();
+              console.log('File uploaded successfully', data);
+              if (data.session_id && data.session_id !== sessionId) {
+                setSessionId(data.session_id);
+                console.log('Session ID set from upload:', data.session_id);
+              }
+              if (data.id) {
+                onDatasetUploaded(data.id);
+                console.log('Dataset ID set locally:', data.id);
+              }
+            }
+          } catch (e) {
+            console.error('File upload error', e);
+            uploadedFileIds.current.delete(filePart.id);
+          }
+        }
+      }
+    };
+
+    handleUpload();
+  }, [files, sessionId, setSessionId, onDatasetUploaded]);
+
+  return null;
+};
+
 export default function AiChat({
   onCodeUpdate,
   onCodeEnd,
@@ -98,6 +169,7 @@ export default function AiChat({
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const isSubmittingRef = useRef(false);
+  const datasetIdRef = useRef<string | null>(null);
 
   // Generate a unique ID
   const generateId = () => Math.random().toString(36).substring(7);
@@ -181,32 +253,10 @@ export default function AiChat({
       const backendUrl = 'http://192.168.151.201:8000';
 
       // 1. Upload files first if any
+      // Files are now auto-uploaded by FileAutoUploader component
+      // We just logging here for debug
       if (input.files.length > 0) {
-        for (const filePart of input.files) {
-          if (filePart.url) {
-            const file = dataURLtoFile(filePart.url, filePart.filename || 'file');
-            if (file) {
-              const formData = new FormData();
-              formData.append('file', file);
-              currentSessionId && formData.append('session_id', currentSessionId);
-              // formData.append('name', file.name);
-
-              try {
-                const uploadRes = await fetch(`${backendUrl}/api/datasets`, {
-                  method: 'POST',
-                  body: formData,
-                });
-                if (!uploadRes.ok) {
-                  console.error('File upload failed', await uploadRes.text());
-                } else {
-                  console.log('File uploaded successfully', file.name);
-                }
-              } catch (e) {
-                console.error('File upload error', e);
-              }
-            }
-          }
-        }
+        console.log('Sending message with files:', input.files.length);
       }
 
       // 2. Send Chat Message
@@ -219,6 +269,7 @@ export default function AiChat({
         body: JSON.stringify({
           messages: [{ role: 'user', content: userText }],
           session_id: currentSessionId,
+          dataset_id: datasetIdRef.current,
         }),
       });
 
@@ -376,12 +427,13 @@ export default function AiChat({
               description="例如：帮我画一个物流监控看板，要有深色主题，包含运输地图和延迟率趋势..."
             />
           ) : (
-            messages.map((msg) => (
+            messages.map((msg, index) => (
               <Message key={msg.id} from={msg.role}>
                 <MessageContent
                   className={cn(
                     'text-sm',
-                    msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3'
+                    msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3',
+                    msg.role === 'user' && '!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3'
                   )}
                 >
                   {msg.content ? (
@@ -424,12 +476,15 @@ export default function AiChat({
                               )}
 
                               {/* Loading for Dashboard Generation: Show after think ends, before message appears */}
-                              {hasThinkingEnded && !mainContent && (
-                                <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
-                                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                                  <span>看板生成中...</span>
-                                </div>
-                              )}
+                              {hasThinkingEnded &&
+                                !mainContent &&
+                                isLoading &&
+                                index === messages.length - 1 && (
+                                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                                    <span>看板生成中...</span>
+                                  </div>
+                                )}
 
                               {mainContent && <Markdown>{mainContent}</Markdown>}
                             </>
@@ -453,6 +508,7 @@ export default function AiChat({
       {/* Input Area */}
       <div className="p-4 border-t border-gray-100 bg-white shrink-0">
         <PromptInputProvider>
+          <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
           <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all bg-white">
             <AttachmentPreview />
             <PromptInput
