@@ -134,10 +134,15 @@ export default function DashboardPreview({
   // );
   // 新实现：支持多文件 artifact
   const sandpackFiles = useMemo(() => {
+    // 旧实现（保留，勿删）- 使用 .js 文件作为默认入口
+    // '/App.js': `...`,
+    // '/index.js': `...`,
+
+    // 新实现：使用 .tsx 文件作为默认入口，匹配 react-ts 模板
     // 默认文件配置
     const defaultFiles: Record<string, string> = {
-      '/App.js': `import React from 'react';
-import { createRoot } from 'react-dom/client';
+      // 默认 App.tsx - 仅作为占位符，当后端返回 App.tsx 时会被覆盖
+      '/App.tsx': `import React from 'react';
 // ⚡️ 性能优化：预加载重型依赖
 import { LineChart, BarChart, PieChart, AreaChart } from 'recharts';
 import { Camera, Home, Settings, User, Activity } from 'lucide-react';
@@ -160,13 +165,11 @@ export default function App() {
     </div>
   ) 
 }`,
-      '/index.js': `import React, { StrictMode } from "react";
+      '/index.tsx': `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./styles.css";
-
 import App from "./App";
 
-const root = createRoot(document.getElementById("root"));
+const root = createRoot(document.getElementById("root")!);
 root.render(
   <StrictMode>
     <App />
@@ -183,14 +186,6 @@ root.render(
     <div id="root"></div>
   </body>
 </html>`,
-      '/styles.css': `
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-`,
     };
 
     // 如果有文件传入，合并到 defaultFiles
@@ -303,7 +298,7 @@ html, body, #root {
           code={Object.values(files).join('\n\n---\n\n')}
         >
           <SandpackProvider
-            template="react"
+            template="react-ts"
             theme={githubLight}
             files={sandpackFiles}
             customSetup={customSetup}

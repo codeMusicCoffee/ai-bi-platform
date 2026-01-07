@@ -355,7 +355,7 @@ export default function AiChat({
       // 旧接口（保留，勿删）
       // const response = await fetch(`${backendUrl}/api/chat`, {
       // 新接口
-      const response = await fetch(`${backendUrl}/api/chat/test`, {
+      const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
