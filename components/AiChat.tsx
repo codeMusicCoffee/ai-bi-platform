@@ -30,10 +30,28 @@ interface ChatMessage {
   timestamp: number;
 }
 
+// 旧实现（保留，勿删）
+// interface AiChatProps {
+//   onCodeUpdate?: (code: string) => void;
+//   onCodeEnd?: () => void;
+//   onStatusChange?: (isLoading: boolean) => void;
+//   isLoadingProps?: boolean;
+// }
+
+// 进度信息接口（导出供 DashboardPreview 使用）
+export interface ProgressInfo {
+  current: number;
+  total: number;
+  component?: string;
+  stage?: string;
+}
+
+// 新实现：支持多文件 artifact 和进度信息
 interface AiChatProps {
-  onCodeUpdate?: (code: string) => void;
+  onCodeUpdate?: (files: Record<string, string>) => void;
   onCodeEnd?: () => void;
   onStatusChange?: (isLoading: boolean) => void;
+  onProgressUpdate?: (progress: ProgressInfo | null) => void;
   isLoadingProps?: boolean;
 }
 
@@ -216,6 +234,7 @@ export default function AiChat({
   onCodeUpdate,
   onCodeEnd,
   onStatusChange,
+  onProgressUpdate,
   isLoadingProps,
 }: AiChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -333,7 +352,10 @@ export default function AiChat({
       }
 
       // 2. Send Chat Message
-      const response = await fetch(`${backendUrl}/api/chat`, {
+      // 旧接口（保留，勿删）
+      // const response = await fetch(`${backendUrl}/api/chat`, {
+      // 新接口
+      const response = await fetch(`${backendUrl}/api/chat/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,7 +392,10 @@ export default function AiChat({
         },
       ]);
 
-      let accumulatedCode = '';
+      // 旧实现（保留，勿删）
+      // let accumulatedCode = '';
+      // 新实现：支持多文件
+      let accumulatedFiles: Record<string, string> = {};
       let accumulatedMessage = '';
 
       while (!isFinished) {
@@ -413,22 +438,89 @@ export default function AiChat({
                 setSessionId(newSessionId);
                 console.log('Session ID updated:', newSessionId);
               }
-            } else if (parsed.type === 'artifact_code') {
-              // Code starting implies thinking ended
+            } else if (parsed.type === 'artifact_start') {
+              // 新增：处理 artifact_start，标记开始生成文件，关闭思考
+              ensureThinkClosed();
+              console.log('Artifact start:', parsed);
+              // 不添加到消息中，只做状态处理
+              // 旧实现（保留，勿删）：处理单文件 artifact_code
+              // } else if (parsed.type === 'artifact_code') {
+              //   ensureThinkClosed();
+              //   const content = parsed.content || parsed.text || '';
+              //   accumulatedCode += content;
+              //   const now = Date.now();
+              //   if (now - lastUpdateTime > 100) {
+              //     if (onCodeUpdate) onCodeUpdate(accumulatedCode);
+              //     lastUpdateTime = now;
+              //   }
+              // }
+
+              // 新实现：处理多文件 artifact_file
+            } else if (parsed.type === 'artifact_file') {
+              // 文件内容开始意味着思考结束
               ensureThinkClosed();
 
-              const content = parsed.content || parsed.text || '';
-              accumulatedCode += content;
+              // 修复：后端返回的数据格式可能是：
+              // 1. { type: "artifact_file", path: "...", code: "..." }
+              // 2. { type: "artifact_file", content: "{\"path\":\"...\",\"code\":\"...\"}" }
+              let filePath = parsed.path || '';
+              let fileCode = parsed.code || '';
 
-              const now = Date.now();
-              if (now - lastUpdateTime > 100) {
-                if (onCodeUpdate) onCodeUpdate(accumulatedCode);
-                lastUpdateTime = now;
+              // 如果 path/code 为空，尝试从 content 解析
+              if (!filePath && parsed.content) {
+                try {
+                  // content 可能是 JSON 字符串
+                  const contentObj =
+                    typeof parsed.content === 'string'
+                      ? JSON.parse(parsed.content)
+                      : parsed.content;
+                  filePath = contentObj.path || '';
+                  fileCode = contentObj.code || '';
+                } catch {
+                  // 如果解析失败，content 可能就是普通字符串，忽略
+                  console.warn('Failed to parse artifact_file content:', parsed.content);
+                }
+              }
+
+              if (filePath && fileCode) {
+                accumulatedFiles[filePath] = fileCode;
+                console.log(
+                  'Accumulated file:',
+                  filePath,
+                  'Total files:',
+                  Object.keys(accumulatedFiles).length
+                );
+
+                const now = Date.now();
+                if (now - lastUpdateTime > 100) {
+                  if (onCodeUpdate) onCodeUpdate({ ...accumulatedFiles });
+                  lastUpdateTime = now;
+                }
               }
             } else if (parsed.type === 'artifact_end') {
               ensureThinkClosed();
-              if (onCodeUpdate) onCodeUpdate(accumulatedCode);
+              console.log('Artifact end, total files:', Object.keys(accumulatedFiles).length);
+              if (onCodeUpdate) onCodeUpdate({ ...accumulatedFiles });
               if (onCodeEnd) onCodeEnd();
+              // 重置进度信息
+              if (onProgressUpdate) onProgressUpdate(null);
+            } else if (parsed.type === 'progress') {
+              // 处理进度信息
+              try {
+                const progressData =
+                  typeof parsed.content === 'string' ? JSON.parse(parsed.content) : parsed.content;
+
+                const progressInfo: ProgressInfo = {
+                  current: progressData.current || 0,
+                  total: progressData.total || 0,
+                  component: progressData.component || '',
+                  stage: progressData.stage || '',
+                };
+                console.log('Progress update:', progressInfo);
+                if (onProgressUpdate) onProgressUpdate(progressInfo);
+              } catch {
+                console.warn('Failed to parse progress content:', parsed.content);
+              }
             } else if (parsed.type === 'thinking') {
               const content = parsed.content || '';
               if (content) {
@@ -442,11 +534,10 @@ export default function AiChat({
                   )
                 );
               }
-            } else {
-              // Message content
+            } else if (parsed.type === 'message') {
+              // 显式处理 message 类型
               const content = parsed.content || parsed.text || parsed.delta || '';
               if (content) {
-                // If we were thinking, now we are messaging, so close think
                 ensureThinkClosed();
 
                 accumulatedMessage += content;
@@ -456,6 +547,9 @@ export default function AiChat({
                   )
                 );
               }
+            } else {
+              // 未知类型，记录日志但不添加到消息
+              console.log('Unknown message type:', parsed.type, parsed);
             }
           } catch (e) {
             console.warn('解析响应出错:', e);

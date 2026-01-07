@@ -1,6 +1,6 @@
 'use client';
 
-import AiChat from '@/components/AiChat';
+import AiChat, { ProgressInfo } from '@/components/AiChat';
 import DashboardPreview from '@/components/DashboardPreview';
 import FullScreenToggle from '@/components/FullScreenToggle';
 import { chatService } from '@/services/chat';
@@ -10,14 +10,20 @@ import { useRef, useState } from 'react';
 export default function Home() {
   const [userInput, setUserInput] = useState('');
   const [refreshId, setRefreshId] = useState(0);
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [streamingCode, setStreamingCode] = useState('');
+  // 旧实现（保留，勿删）
+  // const [generatedCode, setGeneratedCode] = useState('');
+  // const [streamingCode, setStreamingCode] = useState('');
+  // 新实现：支持多文件 artifact
+  const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>({});
+  const [streamingFiles, setStreamingFiles] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [error, setError] = useState<string>('');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  // 新增：组件生成进度信息
+  const [progress, setProgress] = useState<ProgressInfo | null>(null);
 
   const handleTestHealth = async () => {
     setTestStatus('testing');
@@ -47,21 +53,38 @@ export default function Home() {
       >
         <div className="h-full w-full">
           <AiChat
-            onCodeUpdate={(code) => {
-              setGeneratedCode(code);
-              setStreamingCode(code);
+            // 旧实现（保留，勿删）
+            // onCodeUpdate={(code) => {
+            //   setGeneratedCode(code);
+            //   setStreamingCode(code);
+            // }}
+            // 新实现：接收多文件对象
+            onCodeUpdate={(files) => {
+              setGeneratedFiles(files);
+              setStreamingFiles(files);
             }}
+            // 旧实现（保留，勿删）
+            // onCodeEnd={() => {
+            //   setStreamingCode('');
+            // }}
             onCodeEnd={() => {
-              setStreamingCode('');
+              setStreamingFiles({});
             }}
             onStatusChange={(loading) => setIsChatLoading(loading)}
+            onProgressUpdate={(p) => setProgress(p)}
           />
         </div>
       </div>
 
       {/* 右侧预览区 */}
       <div className="flex-1 p-6 bg-slate-100 flex flex-col relative overflow-hidden">
-        {!generatedCode && !streamingCode && !isLoading && !isChatLoading ? (
+        {/* 旧实现（保留，勿删）*/}
+        {/* {!generatedCode && !streamingCode && !isLoading && !isChatLoading ? ( */}
+        {/* 新实现：检查多文件对象是否为空 */}
+        {Object.keys(generatedFiles).length === 0 &&
+        Object.keys(streamingFiles).length === 0 &&
+        !isLoading &&
+        !isChatLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-gray-400">
               <div className="w-20 h-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-300 flex items-center justify-center mx-auto mb-6">
@@ -73,18 +96,33 @@ export default function Home() {
           </div>
         ) : (
           <div className="w-full h-full flex flex-col" style={{ minHeight: 0 }}>
-            {/* 渲染代码预览 - 优先使用完整代码，其次使用流式代码 */}
-            <DashboardPreview
+            {/* 渲染代码预览 - 优先使用完整文件，其次使用流式文件 */}
+            {/* 旧实现（保留，勿删）*/}
+            {/* <DashboardPreview
               code={generatedCode || streamingCode}
               isLoading={isLoading || isChatLoading}
               refreshId={refreshId}
               isFullScreen={isFullScreen}
+            /> */}
+            {/* 新实现：传递多文件对象 */}
+            <DashboardPreview
+              files={Object.keys(generatedFiles).length > 0 ? generatedFiles : streamingFiles}
+              isLoading={isLoading || isChatLoading}
+              refreshId={refreshId}
+              isFullScreen={isFullScreen}
+              progress={progress}
             />
           </div>
         )}
 
         {/* 全屏切换按钮 - 仅在有内容时显示 */}
-        {(generatedCode || streamingCode || isLoading || isChatLoading) && (
+        {/* 旧实现（保留，勿删）*/}
+        {/* {(generatedCode || streamingCode || isLoading || isChatLoading) && ( */}
+        {/* 新实现 */}
+        {(Object.keys(generatedFiles).length > 0 ||
+          Object.keys(streamingFiles).length > 0 ||
+          isLoading ||
+          isChatLoading) && (
           <FullScreenToggle
             isFullScreen={isFullScreen}
             onToggle={() => setIsFullScreen(!isFullScreen)}

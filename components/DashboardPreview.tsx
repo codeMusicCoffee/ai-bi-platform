@@ -64,16 +64,35 @@ class ErrorBoundary extends Component<
 
 type ViewMode = 'preview' | 'code';
 
+// 导入进度信息类型
+import type { ProgressInfo } from './AiChat';
+
+// 旧实现（保留，勿删）
+// export default function DashboardPreview({
+//   code,
+//   isLoading,
+//   refreshId,
+//   isFullScreen,
+// }: {
+//   code: string;
+//   isLoading?: boolean;
+//   refreshId?: number | string;
+//   isFullScreen?: boolean;
+// }) {
+
+// 新实现：支持多文件 artifact 和进度信息
 export default function DashboardPreview({
-  code,
+  files,
   isLoading,
   refreshId,
   isFullScreen,
+  progress,
 }: {
-  code: string;
+  files: Record<string, string>;
   isLoading?: boolean;
   refreshId?: number | string;
   isFullScreen?: boolean;
+  progress?: ProgressInfo | null;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -99,21 +118,27 @@ export default function DashboardPreview({
     }
   }, [isLoading]);
 
-  // ⚡️ 性能极致优化：
-  // 在 loading 期间，无论 code 怎么变，我们都希望 files 对象的引用保持完全不变。
-  // 这样 Sandpack 就绝对不会感知到任何变化，彻底避免重渲染或编译尝试。
-  const effectiveCode = !isLoading && code ? code : null;
+  // 旧实现（保留，勿删）
+  // const effectiveCode = !isLoading && code ? code : null;
+  // 新实现：支持多文件
+  const hasFiles = !isLoading && files && Object.keys(files).length > 0;
 
-  // 使用 useMemo 稳定 files 对象
-  const files = useMemo(
-    () => ({
-      '/App.js':
-        effectiveCode ||
-        `import React from 'react';
+  // 使用 useMemo 稳定 sandpackFiles 对象
+  // 旧实现（保留，勿删）
+  // const files = useMemo(
+  //   () => ({
+  //     '/App.js': effectiveCode || `...default code...`,
+  //     ...other files
+  //   }),
+  //   [effectiveCode]
+  // );
+  // 新实现：支持多文件 artifact
+  const sandpackFiles = useMemo(() => {
+    // 默认文件配置
+    const defaultFiles: Record<string, string> = {
+      '/App.js': `import React from 'react';
 import { createRoot } from 'react-dom/client';
 // ⚡️ 性能优化：预加载重型依赖
-// 即使在 Loading 状态，也导入这些包，强制 Sandpack 开始下载依赖
-// 这样当 AI 代码生成完毕时，依赖可能已经准备好了
 import { LineChart, BarChart, PieChart, AreaChart } from 'recharts';
 import { Camera, Home, Settings, User, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,8 +152,6 @@ export default function App() {
       <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
       <p className="font-medium">正在准备开发环境...</p>
       <div className="text-xs opacity-50">预加载依赖库中</div>
-      
-      {/* 隐式引用，防止 Tree-shaking (虽然 Dev 模式通常不 Shake，但保险起见) */}
       <div style={{ display: 'none' }}>
         <LineChart width={1} height={1} />
         <Camera />
@@ -168,14 +191,28 @@ html, body, #root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 `,
-    }),
-    [effectiveCode]
-  );
+    };
+
+    // 如果有文件传入，合并到 defaultFiles
+    if (hasFiles && files) {
+      // 将后端返回的文件路径转为 Sandpack 需要的格式
+      // 后端返回的路径可能是 "./components/xxx.jsx" 或 "/components/xxx.jsx"
+      Object.entries(files).forEach(([path, code]) => {
+        // 确保路径以 / 开头
+        const normalizedPath = path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
+        defaultFiles[normalizedPath] = code;
+      });
+    }
+
+    return defaultFiles;
+  }, [hasFiles, files]);
 
   const dependencies = {
     react: '18.3.1',
     'react-dom': '18.3.1',
-    recharts: '2.12.7',
+    // 旧版本（保留，勿删）：recharts: '2.12.7' 会产生 defaultProps 警告
+    // 升级到 3.x 版本解决 defaultProps 警告
+    recharts: '3.6.0',
     'lucide-react': '0.400.0',
     'framer-motion': '11.0.3',
     clsx: '2.1.1',
@@ -205,10 +242,10 @@ html, body, #root {
   const options = useMemo(
     () => ({
       externalResources: ['https://cdn.tailwindcss.com'],
-      // 关键：禁用统计
-      enableAnalytics: false,
       recompileMode: 'delayed' as const,
       recompileDelay: 500,
+      // 使用自定义 bundler URL 可以避免遥测请求（可选）
+      // bundlerURL: 'https://sandpack-bundler.codesandbox.io',
     }),
     []
   );
@@ -258,11 +295,17 @@ html, body, #root {
       )}
 
       <div className="flex-1 min-h-0 relative">
-        <ErrorBoundary key={`${refreshKey}-${retryKey}`} code={code}>
+        {/* 旧实现（保留，勿删）*/}
+        {/* <ErrorBoundary key={`${refreshKey}-${retryKey}`} code={code}> */}
+        {/* 新实现：传递所有文件内容给 ErrorBoundary */}
+        <ErrorBoundary
+          key={`${refreshKey}-${retryKey}`}
+          code={Object.values(files).join('\n\n---\n\n')}
+        >
           <SandpackProvider
             template="react"
             theme={githubLight}
-            files={files}
+            files={sandpackFiles}
             customSetup={customSetup}
             options={options}
           >
@@ -277,12 +320,28 @@ html, body, #root {
                   <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
                   <p className="text-sm font-medium text-gray-500">
                     AI 正在思考并生成代码...
-                    {code && (
+                    {/* 旧实现（保留，勿删）*/}
+                    {/* {code && (
                       <span className="ml-2 font-mono text-xs opacity-70">
                         ({code.length} 字符)
                       </span>
+                    )} */}
+                    {/* 新实现：显示文件数 */}
+                    {Object.keys(files).length > 0 && (
+                      <span className="ml-2 font-mono text-xs opacity-70">
+                        ({Object.keys(files).length} 个文件)
+                      </span>
                     )}
                   </p>
+                  {/* 新增：显示组件生成进度 */}
+                  {progress && progress.total > 0 && (
+                    <p className="text-xs text-indigo-500 mt-2 font-medium">
+                      正在生成第 {progress.current}/{progress.total} 个组件
+                      {progress.component && (
+                        <span className="ml-1 text-gray-400">({progress.component})</span>
+                      )}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
                 </div>
               ) : (
@@ -303,14 +362,24 @@ html, body, #root {
             >
               {isLoading ? (
                 // Loading 时显示原生 pre 以展示流式文本，避免 Sandpack 编译错误
-                <pre className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800 whitespace-pre-wrap">
-                  {code}
+                // 旧实现（保留，勿删）
+                // <pre className="...">{code}<span .../></pre>
+                // 新实现：显示所有文件内容
+                <div className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800">
+                  {Object.entries(files).map(([path, code]) => (
+                    <div key={path} className="mb-4">
+                      <div className="text-xs text-indigo-600 font-bold mb-1 bg-indigo-50 px-2 py-1 rounded inline-block">
+                        {path}
+                      </div>
+                      <pre className="whitespace-pre-wrap mt-1">{code}</pre>
+                    </div>
+                  ))}
                   <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse align-middle" />
-                </pre>
+                </div>
               ) : (
                 <SandpackCodeEditor
                   showLineNumbers={true}
-                  showTabs={false}
+                  showTabs={true}
                   showInlineErrors={true}
                   wrapContent={true}
                   style={{ height: '100%' }}
