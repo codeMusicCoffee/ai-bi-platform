@@ -243,6 +243,16 @@ export default function AiChat({
   const isSubmittingRef = useRef(false);
   const datasetIdRef = useRef<string | null>(null);
 
+  // 新增：由于需要支持 Diff 更新，我们需要在本地保存一份完整的文件快照
+  // 这样当后端只返回 Diff 时，我们可以基于这个快照进行 Patch
+  const currentFilesRef = useRef<Record<string, string>>({});
+
+  // 新增：更新本地文件快照的辅助函数
+  const updateLocalFiles = (files: Record<string, string>) => {
+    currentFilesRef.current = { ...currentFilesRef.current, ...files };
+    // console.log('Local files snapshot updated:', Object.keys(currentFilesRef.current));
+  };
+
   // Generate a unique ID
   const generateId = () => Math.random().toString(36).substring(7);
 
@@ -342,7 +352,7 @@ export default function AiChat({
     console.log('currentSessionId', currentSessionId);
 
     try {
-      const backendUrl = 'http://192.168.151.201:8000';
+      const backendUrl = 'http://192.168.110.29:8000';
 
       // 1. Upload files first if any
       // Files are now auto-uploaded by FileAutoUploader component
@@ -355,7 +365,7 @@ export default function AiChat({
       // 旧接口（保留，勿删）
       // const response = await fetch(`${backendUrl}/api/chat`, {
       // 新接口
-      const response = await fetch(`${backendUrl}/api/chat`, {
+      const response = await fetch(`${backendUrl}/api/chat/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -493,14 +503,22 @@ export default function AiChat({
 
                 const now = Date.now();
                 if (now - lastUpdateTime > 100) {
-                  if (onCodeUpdate) onCodeUpdate({ ...accumulatedFiles });
+                  // ⚡️ 修复：合并历史文件快照，防止局部更新时丢失旧文件
+                  // 如果只传 accumulatedFiles，DashboardPreview 会以为只有这几个文件，导致应用崩溃或白屏
+                  const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
+                  if (onCodeUpdate) onCodeUpdate(mergedFiles);
                   lastUpdateTime = now;
                 }
               }
             } else if (parsed.type === 'artifact_end') {
               ensureThinkClosed();
               console.log('Artifact end, total files:', Object.keys(accumulatedFiles).length);
-              if (onCodeUpdate) onCodeUpdate({ ...accumulatedFiles });
+
+              // ⚡️ 修复：最终合并并持久化
+              const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
+              updateLocalFiles(accumulatedFiles); // 更新本地 ref，供下一轮使用
+
+              if (onCodeUpdate) onCodeUpdate(mergedFiles);
               if (onCodeEnd) onCodeEnd();
               // 重置进度信息
               if (onProgressUpdate) onProgressUpdate(null);

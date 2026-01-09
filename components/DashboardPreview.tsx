@@ -3,7 +3,7 @@
 import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
 import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
-import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Component, ErrorInfo, ReactNode, useMemo, useState } from 'react';
 
 // 简单的错误边界组件
 class ErrorBoundary extends Component<
@@ -67,20 +67,7 @@ type ViewMode = 'preview' | 'code';
 // 导入进度信息类型
 import type { ProgressInfo } from './AiChat';
 
-// 旧实现（保留，勿删）
-// export default function DashboardPreview({
-//   code,
-//   isLoading,
-//   refreshId,
-//   isFullScreen,
-// }: {
-//   code: string;
-//   isLoading?: boolean;
-//   refreshId?: number | string;
-//   isFullScreen?: boolean;
-// }) {
-
-// 新实现：支持多文件 artifact 和进度信息
+// 支持多文件 artifact 和进度信息
 export default function DashboardPreview({
   files,
   isLoading,
@@ -97,49 +84,14 @@ export default function DashboardPreview({
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // 🔒 1. Sandpack 失败自动重建
-  const [retryKey, setRetryKey] = useState(0);
+  const filesKey = useMemo(() => {
+    if (!files) return 'empty';
+    return Object.keys(files).sort().join(',') + '-' + Object.keys(files).length;
+  }, [files]);
 
-  // 当 loading 结束时，强制刷新一次沙箱
-  // 3 秒还没出来，直接重建
-  useEffect(() => {
-    if (!isLoading) {
-      // ⚡️ 优化：移除 200ms 的延迟刷新，防止与 refreshId 导致的重置发生冲突（避免二次重绘）。
-      // 父组件传入的 refreshId 变化已经触发了 ErrorBoundary 的 Key 变化，足以重置沙箱。
+  const hasFiles = files && Object.keys(files).length > 0;
 
-      // 3 秒还没出来，直接重建作为兜底
-      const t = setTimeout(() => {
-        setRetryKey((k) => k + 1);
-      }, 3000);
-
-      return () => {
-        clearTimeout(t);
-      };
-    }
-  }, [isLoading]);
-
-  // 旧实现（保留，勿删）
-  // const effectiveCode = !isLoading && code ? code : null;
-  // 新实现：支持多文件
-  const hasFiles = !isLoading && files && Object.keys(files).length > 0;
-
-  // 使用 useMemo 稳定 sandpackFiles 对象
-  // 旧实现（保留，勿删）
-  // const files = useMemo(
-  //   () => ({
-  //     '/App.js': effectiveCode || `...default code...`,
-  //     ...other files
-  //   }),
-  //   [effectiveCode]
-  // );
-  // 新实现：支持多文件 artifact
   const sandpackFiles = useMemo(() => {
-    // 旧实现（保留，勿删）- 使用 .js 文件作为默认入口
-    // '/App.js': `...`,
-    // '/index.js': `...`,
-
-    // 新实现：使用 .tsx 文件作为默认入口，匹配 react-ts 模板
-    // 默认文件配置
     const defaultFiles: Record<string, string> = {
       // 默认 App.tsx - 仅作为占位符，当后端返回 App.tsx 时会被覆盖
       '/App.tsx': `import React from 'react';
@@ -200,13 +152,11 @@ root.render(
     }
 
     return defaultFiles;
-  }, [hasFiles, files]);
+  }, [hasFiles, filesKey]);
 
   const dependencies = {
     react: '18.3.1',
     'react-dom': '18.3.1',
-    // 旧版本（保留，勿删）：recharts: '2.12.7' 会产生 defaultProps 警告
-    // 升级到 3.x 版本解决 defaultProps 警告
     recharts: '3.6.0',
     'lucide-react': '0.400.0',
     'framer-motion': '11.0.3',
@@ -222,7 +172,6 @@ root.render(
       npmRegistries: [
         {
           // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-          // @ts-ignore: Sandpack 类型定义可能是旧版或不准确，兼容性处理
           enabledScopes: [],
           limitToScopes: false,
           registryUrl: 'https://registry.npmmirror.com/',
@@ -290,11 +239,8 @@ root.render(
       )}
 
       <div className="flex-1 min-h-0 relative">
-        {/* 旧实现（保留，勿删）*/}
-        {/* <ErrorBoundary key={`${refreshKey}-${retryKey}`} code={code}> */}
-        {/* 新实现：传递所有文件内容给 ErrorBoundary */}
         <ErrorBoundary
-          key={`${refreshKey}-${retryKey}`}
+          key={`${refreshKey}-${filesKey}`}
           code={Object.values(files).join('\n\n---\n\n')}
         >
           <SandpackProvider
@@ -304,31 +250,32 @@ root.render(
             customSetup={customSetup}
             options={options}
           >
-            {/* 预览视图：加载中显示 Loading，加载完显示 Preview */}
+            {/* 预览视图：始终显示，Loading 只是 Overlay */}
             <div
               className={`w-full h-full absolute inset-0 bg-white ${
                 viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
               }`}
             >
-              {isLoading ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+              <SandpackPreview
+                showNavigator={false}
+                showRefreshButton={true}
+                showOpenInCodeSandbox={false}
+                style={{ height: '100%' }}
+              />
+
+              {/* 统一 Loading 遮罩层：满足用户看到详细进度的需求，同时保持底层 Sandpack 不卸载 */}
+              {isLoading && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white text-gray-400">
                   <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
                   <p className="text-sm font-medium text-gray-500">
                     AI 正在思考并生成代码...
-                    {/* 旧实现（保留，勿删）*/}
-                    {/* {code && (
-                      <span className="ml-2 font-mono text-xs opacity-70">
-                        ({code.length} 字符)
-                      </span>
-                    )} */}
-                    {/* 新实现：显示文件数 */}
                     {Object.keys(files).length > 0 && (
                       <span className="ml-2 font-mono text-xs opacity-70">
                         ({Object.keys(files).length} 个文件)
                       </span>
                     )}
                   </p>
-                  {/* 新增：显示组件生成进度 */}
+
                   {progress && progress.total > 0 && (
                     <p className="text-xs text-indigo-500 mt-2 font-medium">
                       正在生成第 {progress.current}/{progress.total} 个组件
@@ -337,15 +284,9 @@ root.render(
                       )}
                     </p>
                   )}
+
                   <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
                 </div>
-              ) : (
-                <SandpackPreview
-                  showNavigator={false}
-                  showRefreshButton={true}
-                  showOpenInCodeSandbox={false}
-                  style={{ height: '100%' }}
-                />
               )}
             </div>
 
@@ -356,8 +297,6 @@ root.render(
               }`}
             >
               {isLoading ? (
-                // Loading 时显示原生 pre 以展示流式文本，避免 Sandpack 编译错误
-                // 旧实现（保留，勿删）
                 // <pre className="...">{code}<span .../></pre>
                 // 新实现：显示所有文件内容
                 <div className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800">
