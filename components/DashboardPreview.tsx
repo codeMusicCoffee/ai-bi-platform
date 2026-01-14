@@ -1,9 +1,16 @@
 'use client';
 
-import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
+import {
+  SandpackCodeEditor,
+  SandpackPreview,
+  SandpackProvider,
+  useSandpack,
+} from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
 import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
-import { Component, ErrorInfo, ReactNode, useMemo, useState } from 'react';
+import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+// 导入进度信息类型
+import type { ProgressInfo } from './AiChat';
 
 // 简单的错误边界组件
 class ErrorBoundary extends Component<
@@ -64,8 +71,85 @@ class ErrorBoundary extends Component<
 
 type ViewMode = 'preview' | 'code';
 
-// 导入进度信息类型
-import type { ProgressInfo } from './AiChat';
+function normalizePath(path: string) {
+  return path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
+}
+
+function makeSignature(files: Record<string, string>) {
+  const entries = Object.entries(files)
+    .map(([p, c]) => [normalizePath(p), c] as const)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join('\n@@\n');
+}
+
+const SandpackFileSyncer = ({
+  externalFiles,
+  isLoading,
+}: {
+  externalFiles: Record<string, string>;
+  isLoading?: boolean;
+}) => {
+  const { sandpack, dispatch } = useSandpack();
+
+  const normalizedFiles = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [path, code] of Object.entries(externalFiles)) {
+      out[normalizePath(path)] = code;
+    }
+    return out;
+  }, [externalFiles]);
+
+  const signature = useMemo(() => makeSignature(externalFiles), [externalFiles]);
+
+  const prevSignatureRef = useRef('');
+  const prevIsLoadingRef = useRef<boolean>(!!isLoading);
+
+  useEffect(() => {
+    const prevLoading = prevIsLoadingRef.current;
+    const currLoading = !!isLoading;
+
+    // 先记录最新 loading
+    prevIsLoadingRef.current = currLoading;
+
+    // loading 时允许“积累外部变更”，但不写入 sandpack（避免频繁编译）
+    if (currLoading) return;
+
+    // 只有在内容真的变了才同步
+    if (prevSignatureRef.current === signature) {
+      // 但是：如果刚从 loading -> not loading，仍可选择 refresh 一次兜底
+      // 这里先不做，避免无意义刷新
+      return;
+    }
+
+    // 1) 写入变更文件
+    const prevFiles = sandpack.files;
+    let changed = 0;
+
+    for (const [path, code] of Object.entries(normalizedFiles)) {
+      const current = prevFiles?.[path]?.code;
+      if (current !== code) {
+        sandpack.updateFile(path, code);
+        changed++;
+      }
+    }
+
+    prevSignatureRef.current = signature;
+
+    // 2) 关键：如果这是一次“生成结束”（loading -> false）后的同步，refresh 一次
+    // 或者：只要 changed>0 就 refresh
+    // 推荐：仅在 loading 边沿触发，避免你手动编辑 code 时每次都重启 iframe
+    if (changed > 0 && prevLoading === true && currLoading === false) {
+      // debounce 一下，给 updateFile 完成/编译器接收时间
+      const t = setTimeout(() => {
+        dispatch({ type: 'refresh' });
+      }, 150);
+
+      return () => clearTimeout(t);
+    }
+  }, [signature, isLoading, normalizedFiles, sandpack, dispatch]);
+
+  return null;
+};
 
 // 支持多文件 artifact 和进度信息
 export default function DashboardPreview({
@@ -86,15 +170,7 @@ export default function DashboardPreview({
 
   // 🔧 修复：filesKey 需要考虑文件内容变化，而不仅是文件名
   // 否则当 artifact_delta 更新文件内容时，filesKey 不变，sandpackFiles 不会重新计算
-  const filesKey = useMemo(() => {
-    if (!files) return 'empty';
-    // 加入每个文件内容的长度，确保内容变化时 key 也变化
-    const contentSignature = Object.entries(files)
-      .map(([path, code]) => `${path}:${code.length}`)
-      .sort()
-      .join('|');
-    return contentSignature;
-  }, [files]);
+  const filesKey = useMemo(() => makeSignature(files ?? {}), [files]);
 
   const hasFiles = files && Object.keys(files).length > 0;
 
@@ -185,21 +261,21 @@ root.render(
     clsx: '2.1.1',
     'tailwind-merge': '2.5.2',
     'react-is': '18.3.1',
-    'date-fns': 'latest',
+    'date-fns': '3.6.0',
   };
   // 稳定 customSetup 对象
   const customSetup = useMemo(
     () => ({
       // 1. 强制配置 npm 镜像源为淘宝源
-      npmRegistries: [
-        {
-          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-          enabledScopes: [],
-          limitToScopes: false,
-          registryUrl: 'https://registry.npmmirror.com/',
-          proxyEnabled: false,
-        },
-      ],
+      // npmRegistries: [
+      //   {
+      //     // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
+      //     enabledScopes: [],
+      //     limitToScopes: false,
+      //     registryUrl: 'https://registry.npmmirror.com/',
+      //     proxyEnabled: false,
+      //   },
+      // ],
       dependencies,
     }),
     []
@@ -215,7 +291,18 @@ root.render(
     }),
     []
   );
+  const [previewKey, setPreviewKey] = useState(0);
+  const prevLoadingRef = useRef(!!isLoading);
 
+  useEffect(() => {
+    const prev = prevLoadingRef.current;
+    const curr = !!isLoading;
+    prevLoadingRef.current = curr;
+
+    if (prev === true && curr === false) {
+      setPreviewKey((k) => k + 1);
+    }
+  }, [isLoading, filesKey]);
   return (
     <div
       className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
@@ -265,6 +352,7 @@ root.render(
           key={`${refreshKey}-${filesKey}`}
           code={Object.values(files).join('\n\n---\n\n')}
         >
+          {/*             key={previewKey} */}
           <SandpackProvider
             template="react-ts"
             theme={githubLight}
@@ -272,6 +360,9 @@ root.render(
             customSetup={customSetup}
             options={options}
           >
+            {/* ⚡️ 文件同步器：监听外部文件变化，使用官方 Hook 更新 Sandpack 内部状态 */}
+            <SandpackFileSyncer externalFiles={files} isLoading={isLoading} />
+
             {/* 预览视图：始终显示，Loading 只是 Overlay */}
             <div
               className={`w-full h-full absolute inset-0 bg-white ${
@@ -319,7 +410,6 @@ root.render(
               }`}
             >
               {isLoading ? (
-                // <pre className="...">{code}<span .../></pre>
                 // 新实现：显示所有文件内容
                 <div className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800">
                   {Object.entries(files).map(([path, code]) => (
