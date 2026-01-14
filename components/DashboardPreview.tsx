@@ -1,73 +1,12 @@
 'use client';
 
-import {
-  SandpackCodeEditor,
-  SandpackPreview,
-  SandpackProvider,
-  useSandpack,
-} from '@codesandbox/sandpack-react';
+import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
 import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
-import { Component, ErrorInfo, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 // 导入进度信息类型
 import type { ProgressInfo } from './AiChat';
-
-// 简单的错误边界组件
-class ErrorBoundary extends Component<
-  { children: ReactNode; code: string },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode; code: string }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // 避免在严格模式下修改 readonly 属性导致的二次报错
-    console.error('Sandpack Error Caught:', error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex flex-col bg-red-50 p-4 overflow-hidden relative">
-          <div className="flex flex-col items-center justify-center p-6 text-center z-10">
-            <div className="bg-white p-6 rounded-xl shadow-lg border border-red-100 max-w-md w-full">
-              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4 mx-auto">
-                <Loader2 className="w-6 h-6 text-red-500" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">组件渲染遇到问题</h3>
-              <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                {this.state.error?.message || '生成的代码可能包含语法错误'}
-              </p>
-              <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium mb-3"
-              >
-                <RefreshCw className="w-4 h-4" />
-                尝试重新加载
-              </button>
-              <p className="text-xs text-gray-400">您可以在下方查看或复制原始代码</p>
-            </div>
-          </div>
-
-          {/* 降级显示原始代码 */}
-          <div className="flex-1 mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-inner relative opacity-75 grayscale">
-            <pre className="w-full h-full p-4 text-xs font-mono text-gray-600 overflow-auto whitespace-pre-wrap">
-              {this.props.code}
-            </pre>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+import DashboardEmptyState from './DashboardEmptyState';
 
 type ViewMode = 'preview' | 'code';
 
@@ -82,75 +21,6 @@ function makeSignature(files: Record<string, string>) {
   return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join('\n@@\n');
 }
 
-const SandpackFileSyncer = ({
-  externalFiles,
-  isLoading,
-}: {
-  externalFiles: Record<string, string>;
-  isLoading?: boolean;
-}) => {
-  const { sandpack, dispatch } = useSandpack();
-
-  const normalizedFiles = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const [path, code] of Object.entries(externalFiles)) {
-      out[normalizePath(path)] = code;
-    }
-    return out;
-  }, [externalFiles]);
-
-  const signature = useMemo(() => makeSignature(externalFiles), [externalFiles]);
-
-  const prevSignatureRef = useRef('');
-  const prevIsLoadingRef = useRef<boolean>(!!isLoading);
-
-  useEffect(() => {
-    const prevLoading = prevIsLoadingRef.current;
-    const currLoading = !!isLoading;
-
-    // 先记录最新 loading
-    prevIsLoadingRef.current = currLoading;
-
-    // loading 时允许“积累外部变更”，但不写入 sandpack（避免频繁编译）
-    if (currLoading) return;
-
-    // 只有在内容真的变了才同步
-    if (prevSignatureRef.current === signature) {
-      // 但是：如果刚从 loading -> not loading，仍可选择 refresh 一次兜底
-      // 这里先不做，避免无意义刷新
-      return;
-    }
-
-    // 1) 写入变更文件
-    const prevFiles = sandpack.files;
-    let changed = 0;
-
-    for (const [path, code] of Object.entries(normalizedFiles)) {
-      const current = prevFiles?.[path]?.code;
-      if (current !== code) {
-        sandpack.updateFile(path, code);
-        changed++;
-      }
-    }
-
-    prevSignatureRef.current = signature;
-
-    // 2) 关键：如果这是一次“生成结束”（loading -> false）后的同步，refresh 一次
-    // 或者：只要 changed>0 就 refresh
-    // 推荐：仅在 loading 边沿触发，避免你手动编辑 code 时每次都重启 iframe
-    if (changed > 0 && prevLoading === true && currLoading === false) {
-      // debounce 一下，给 updateFile 完成/编译器接收时间
-      const t = setTimeout(() => {
-        dispatch({ type: 'refresh' });
-      }, 150);
-
-      return () => clearTimeout(t);
-    }
-  }, [signature, isLoading, normalizedFiles, sandpack, dispatch]);
-
-  return null;
-};
-
 // 支持多文件 artifact 和进度信息
 export default function DashboardPreview({
   files,
@@ -158,12 +28,14 @@ export default function DashboardPreview({
   refreshId,
   isFullScreen,
   progress,
+  chatInit,
 }: {
   files: Record<string, string>;
   isLoading?: boolean;
   refreshId?: number | string;
   isFullScreen?: boolean;
   progress?: ProgressInfo | null;
+  chatInit?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -183,28 +55,44 @@ export default function DashboardPreview({
     filesKey,
   });
 
+  // 还原正常的 sandpackFiles 逻辑
   const sandpackFiles = useMemo(() => {
     const defaultFiles: Record<string, string> = {
-      // 默认 App.tsx - 仅作为占位符，当后端返回 App.tsx 时会被覆盖
       '/App.tsx': `import React from 'react';
-// ⚡️ 性能优化：预加载重型依赖
-import { LineChart, BarChart, PieChart, AreaChart } from 'recharts';
-import { Camera, Home, Settings, User, Activity } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import * as dateFns from 'date-fns';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { Loader2, Sparkles } from 'lucide-react';
 
 export default function App() { 
   return (
-    <div className="h-full flex flex-col items-center justify-center text-gray-400 animate-pulse gap-3">
-      <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-      <p className="font-medium">正在准备开发环境...</p>
-      <div className="text-xs opacity-50">预加载依赖库中</div>
-      <div style={{ display: 'none' }}>
-        <LineChart width={1} height={1} />
-        <Camera />
-        <motion.div />
+    <div className="h-screen w-full flex flex-col items-center justify-center bg-[#fafafa] text-slate-900 p-6 font-sans overflow-hidden">
+      <div className="relative max-w-sm w-full">
+        {/* 背景装饰光晕 */}
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-indigo-50 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-pulse" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-blue-50 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-pulse delay-700" />
+        
+        <div className="relative bg-white/70 backdrop-blur-2xl p-12 rounded-[3rem] border border-white shadow-[0_20px_50px_rgba(0,0,0,0.03)] text-center">
+          <div className="relative inline-flex mb-10">
+            {/* 优雅的旋转光环 */}
+            <div className="absolute inset-[-12px] border-[3px] border-slate-100 rounded-full" />
+            <div className="absolute inset-[-12px] border-[3px] border-transparent border-t-indigo-600 rounded-full animate-[spin_1.2s_cubic-bezier(0.76,0,0.24,1)_infinite]" />
+            
+            <div className="w-24 h-24 bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-full flex items-center justify-center shadow-2xl shadow-indigo-200 ring-8 ring-indigo-50">
+              <Sparkles className="text-white w-12 h-12 animate-pulse" />
+            </div>
+          </div>
+          
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-3">
+            沙箱环境就绪中
+          </h1>
+          <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8">
+            正在为您配置实时预览沙箱<br/>
+            准备 UI 核心依赖与渲染引擎
+          </p>
+          
+          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-slate-900 rounded-2xl shadow-lg ring-1 ring-white/20">
+             <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-600 border-t-white animate-spin" />
+             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/90">Initializing</span>
+          </div>
+        </div>
       </div>
     </div>
   ) 
@@ -224,7 +112,7 @@ root.render(
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Preview</title>
   </head>
   <body>
     <div id="root"></div>
@@ -232,25 +120,15 @@ root.render(
 </html>`,
     };
 
-    // 如果有文件传入，合并到 defaultFiles
     if (hasFiles && files) {
-      // 将后端返回的文件路径转为 Sandpack 需要的格式
-      // 后端返回的路径可能是 "./components/xxx.jsx" 或 "/components/xxx.jsx"
       Object.entries(files).forEach(([path, code]) => {
-        // 确保路径以 / 开头
         const normalizedPath = path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
         defaultFiles[normalizedPath] = code;
       });
     }
-
-    // 🔍 调试日志：最终传递给 Sandpack 的文件
-    console.log('🏗️ [DashboardPreview] sandpackFiles computed:', {
-      totalFiles: Object.keys(defaultFiles).length,
-      fileKeys: Object.keys(defaultFiles),
-    });
-
+    console.log('defaultFiles', defaultFiles);
     return defaultFiles;
-  }, [hasFiles, filesKey]);
+  }, [hasFiles, filesKey, files]);
 
   const dependencies = {
     react: '18.3.1',
@@ -293,6 +171,7 @@ root.render(
   );
   const [previewKey, setPreviewKey] = useState(0);
   const prevLoadingRef = useRef(!!isLoading);
+  const prevRefreshIdRef = useRef(refreshId);
 
   useEffect(() => {
     const prev = prevLoadingRef.current;
@@ -303,6 +182,24 @@ root.render(
       setPreviewKey((k) => k + 1);
     }
   }, [isLoading, filesKey]);
+
+  // 🔧 关键修复：监听 refreshId 变化，触发 SandpackProvider 重新挂载
+  useEffect(() => {
+    // 跳过首次渲染
+    if (prevRefreshIdRef.current === refreshId) {
+      return;
+    }
+
+    // 只有在 refreshId 从非 0 变化时才触发（跳过首次初始化）
+    if (prevRefreshIdRef.current !== undefined && prevRefreshIdRef.current !== 0) {
+      console.log('🔄 [DashboardPreview] refreshId changed, incrementing previewKey');
+      console.log('  - Previous refreshId:', prevRefreshIdRef.current);
+      console.log('  - Current refreshId:', refreshId);
+      setPreviewKey((k) => k + 1);
+    }
+
+    prevRefreshIdRef.current = refreshId;
+  }, [refreshId]);
   return (
     <div
       className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
@@ -348,93 +245,92 @@ root.render(
       )}
 
       <div className="flex-1 min-h-0 relative">
-        <ErrorBoundary
-          key={`${refreshKey}-${filesKey}`}
-          code={Object.values(files).join('\n\n---\n\n')}
+        <SandpackProvider
+          template="react-ts"
+          theme={githubLight}
+          files={sandpackFiles}
+          customSetup={customSetup}
+          options={options}
         >
-          {/*             key={previewKey} */}
-          <SandpackProvider
-            template="react-ts"
-            theme={githubLight}
-            files={sandpackFiles}
-            customSetup={customSetup}
-            options={options}
+          {/* 预览视图：始终显示，Loading 只是 Overlay */}
+          <div
+            className={`w-full h-full absolute inset-0 bg-white ${
+              viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+            }`}
           >
-            {/* ⚡️ 文件同步器：监听外部文件变化，使用官方 Hook 更新 Sandpack 内部状态 */}
-            <SandpackFileSyncer externalFiles={files} isLoading={isLoading} />
+            <SandpackPreview
+              showNavigator={false}
+              showRefreshButton={true}
+              showOpenInCodeSandbox={false}
+              style={{ height: '100%' }}
+            />
 
-            {/* 预览视图：始终显示，Loading 只是 Overlay */}
-            <div
-              className={`w-full h-full absolute inset-0 bg-white ${
-                viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
-              }`}
-            >
-              <SandpackPreview
-                showNavigator={false}
-                showRefreshButton={true}
-                showOpenInCodeSandbox={false}
-                style={{ height: '100%' }}
-              />
+            {/* 当处于初始状态时显示空状态占位 */}
+            {chatInit && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white">
+                <DashboardEmptyState />
+              </div>
+            )}
 
-              {/* 统一 Loading 遮罩层：满足用户看到详细进度的需求，同时保持底层 Sandpack 不卸载 */}
-              {isLoading && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white text-gray-400">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
-                  <p className="text-sm font-medium text-gray-500">
-                    AI 正在思考并生成代码...
-                    {Object.keys(files).length > 0 && (
-                      <span className="ml-2 font-mono text-xs opacity-70">
-                        ({Object.keys(files).length} 个文件)
-                      </span>
+            {/* 统一 Loading 遮罩层：满足用户看到详细进度的需求，同时保持底层 Sandpack 不卸载 */}
+
+            {isLoading && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white text-gray-400">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
+                <p className="text-sm font-medium text-gray-500">
+                  AI 正在思考并生成代码...
+                  {Object.keys(files).length > 0 && (
+                    <span className="ml-2 font-mono text-xs opacity-70">
+                      ({Object.keys(files).length} 个文件)
+                    </span>
+                  )}
+                </p>
+
+                {progress && progress.total > 0 && (
+                  <p className="text-xs text-indigo-500 mt-2 font-medium">
+                    正在生成第 {progress.current}/{progress.total} 个组件
+                    {progress.component && (
+                      <span className="ml-1 text-gray-400">({progress.component})</span>
                     )}
                   </p>
+                )}
 
-                  {progress && progress.total > 0 && (
-                    <p className="text-xs text-indigo-500 mt-2 font-medium">
-                      正在生成第 {progress.current}/{progress.total} 个组件
-                      {progress.component && (
-                        <span className="ml-1 text-gray-400">({progress.component})</span>
-                      )}
-                    </p>
-                  )}
+                <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
+              </div>
+            )}
+          </div>
 
-                  <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
-                </div>
-              )}
-            </div>
-
-            {/* 代码视图：始终显示编辑器，方便查看流式生成 */}
-            <div
-              className={`w-full h-full absolute inset-0 bg-white ${
-                viewMode === 'code' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
-              }`}
-            >
-              {isLoading ? (
-                // 新实现：显示所有文件内容
-                <div className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800">
-                  {Object.entries(files).map(([path, code]) => (
-                    <div key={path} className="mb-4">
-                      <div className="text-xs text-indigo-600 font-bold mb-1 bg-indigo-50 px-2 py-1 rounded inline-block">
-                        {path}
-                      </div>
-                      <pre className="whitespace-pre-wrap mt-1">{code}</pre>
+          {/* 代码视图：始终显示编辑器，方便查看流式生成 */}
+          <div
+            className={`w-full h-full absolute inset-0 bg-white ${
+              viewMode === 'code' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+            }`}
+          >
+            {isLoading ? (
+              // 新实现：显示所有文件内容
+              <div className="w-full h-full p-4 overflow-auto font-mono text-sm bg-gray-50 text-gray-800">
+                {Object.entries(files).map(([path, code]) => (
+                  <div key={path} className="mb-4">
+                    <div className="text-xs text-indigo-600 font-bold mb-1 bg-indigo-50 px-2 py-1 rounded inline-block">
+                      {path}
                     </div>
-                  ))}
-                  <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse align-middle" />
-                </div>
-              ) : (
-                <SandpackCodeEditor
-                  showLineNumbers={true}
-                  showTabs={true}
-                  showInlineErrors={true}
-                  wrapContent={true}
-                  style={{ height: '100%' }}
-                  readOnly={false}
-                />
-              )}
-            </div>
-          </SandpackProvider>
-        </ErrorBoundary>
+                    <pre className="whitespace-pre-wrap mt-1">{code}</pre>
+                  </div>
+                ))}
+                <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse align-middle" />
+              </div>
+            ) : (
+              <SandpackCodeEditor
+                showLineNumbers={true}
+                showTabs={true}
+                showInlineErrors={true}
+                wrapContent={true}
+                style={{ height: '100%' }}
+                readOnly={false}
+              />
+            )}
+          </div>
+        </SandpackProvider>
       </div>
     </div>
   );

@@ -263,68 +263,73 @@ export default function AiChat({
   useEffect(() => {
     console.log('sessionId', sessionId);
     if (!sessionId) return;
-    const fetchSession = async () => {
-      try {
-        // 仅设置本地 Loading，不触发父组件的 Generating 状态
-        setIsLoading(true);
-        const backendUrl = 'http://localhost:8000';
-        const res = await fetch(`${backendUrl}/api/sessions/${sessionId}`);
+    // 暂时注释获取session对话
+    // const fetchSession = async () => {
+    //   try {
+    //     // 仅设置本地 Loading，不触发父组件的 Generating 状态
+    //     setIsLoading(true);
+    //     const backendUrl = 'http://localhost:8000';
+    //     const res = await fetch(`${backendUrl}/api/sessions/${sessionId}`);
 
-        if (!res.ok) {
-          if (res.status === 404) {
-            console.warn('Session not found, clearing local session');
-            // Optionally clear invalid session: setSessionId(null);
-            return;
-          }
-          throw new Error('Failed to fetch session');
-        }
+    //     if (!res.ok) {
+    //       if (res.status === 404) {
+    //         console.warn('Session not found, clearing local session');
+    //         // Optionally clear invalid session: setSessionId(null);
+    //         return;
+    //       }
+    //       throw new Error('Failed to fetch session');
+    //     }
 
-        const data = await res.json();
+    //     const data = await res.json();
 
-        if (data.messages && Array.isArray(data.messages)) {
-          const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
-            id: msg.id || `history-${index}-${Date.now()}`,
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-          }));
-          setMessages(history);
+    //     if (data.messages && Array.isArray(data.messages)) {
+    //       const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
+    //         id: msg.id || `history-${index}-${Date.now()}`,
+    //         role: msg.role,
+    //         content: msg.content,
+    //         timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+    //       }));
+    //       setMessages(history);
 
-          // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
-          // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
-          const lastMsg = data.messages[data.messages.length - 1];
-          if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
-            const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
-            // 只处理 react 类型的 artifact，且包含 code
-            if (lastArtifact.type === 'react' && lastArtifact.code) {
-              console.log('Restoring code from history artifact:', lastArtifact.title);
+    //       // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
+    //       // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
+    //       const lastMsg = data.messages[data.messages.length - 1];
+    //       if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
+    //         const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
+    //         // 只处理 react 类型的 artifact，且包含 code
+    //         if (lastArtifact.type === 'react' && lastArtifact.code) {
+    //           console.log('Restoring code from history artifact:', lastArtifact.title);
 
-              // ⚡️ 关键修复：同步更新本地文件快照
-              // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
-              if (typeof lastArtifact.code === 'object') {
-                // 如果 code 是多文件对象，直接更新
-                updateLocalFiles(lastArtifact.code);
-              }
+    //           // ⚡️ 关键修复：同步更新本地文件快照
+    //           // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
+    //           if (typeof lastArtifact.code === 'object') {
+    //             // 如果 code 是多文件对象，直接更新
+    //             updateLocalFiles(lastArtifact.code);
+    //           }
 
-              if (onCodeUpdate) {
-                // 更新代码内容
-                onCodeUpdate(lastArtifact.code);
-              }
-              if (onCodeEnd) {
-                // 标记生成/流式传输结束，确保状态为"完成"
-                onCodeEnd();
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    //           if (onCodeUpdate) {
+    //             // 兼容旧版 string 类型的 code
+    //             const filesObj =
+    //               typeof lastArtifact.code === 'string'
+    //                 ? { '/App.tsx': lastArtifact.code }
+    //                 : lastArtifact.code;
+    //             onCodeUpdate(filesObj);
+    //           }
+    //           if (onCodeEnd) {
+    //             // 标记生成/流式传输结束，确保状态为"完成"
+    //             onCodeEnd();
+    //           }
+    //         }
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error('Error loading session:', error);
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    // };
 
-    fetchSession();
+    // fetchSession();
   }, [sessionId]);
 
   // Wrapper for setting loading state and notifying parent
