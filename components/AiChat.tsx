@@ -113,7 +113,7 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
 
   useEffect(() => {
     const handleUpload = async () => {
-      const backendUrl = 'http://192.168.151.201:8000';
+      const backendUrl = 'http://localhost:8000';
 
       for (const filePart of files) {
         if (uploadedFileIds.current.has(filePart.id)) continue;
@@ -267,7 +267,7 @@ export default function AiChat({
       try {
         // 仅设置本地 Loading，不触发父组件的 Generating 状态
         setIsLoading(true);
-        const backendUrl = 'http://192.168.151.201:8000';
+        const backendUrl = 'http://localhost:8000';
         const res = await fetch(`${backendUrl}/api/sessions/${sessionId}`);
 
         if (!res.ok) {
@@ -298,6 +298,14 @@ export default function AiChat({
             // 只处理 react 类型的 artifact，且包含 code
             if (lastArtifact.type === 'react' && lastArtifact.code) {
               console.log('Restoring code from history artifact:', lastArtifact.title);
+
+              // ⚡️ 关键修复：同步更新本地文件快照
+              // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
+              if (typeof lastArtifact.code === 'object') {
+                // 如果 code 是多文件对象，直接更新
+                updateLocalFiles(lastArtifact.code);
+              }
+
               if (onCodeUpdate) {
                 // 更新代码内容
                 onCodeUpdate(lastArtifact.code);
@@ -352,7 +360,7 @@ export default function AiChat({
     console.log('currentSessionId', currentSessionId);
 
     try {
-      const backendUrl = 'http://192.168.110.29:8000';
+      const backendUrl = 'http://localhost:8000';
 
       // 1. Upload files first if any
       // Files are now auto-uploaded by FileAutoUploader component
@@ -365,7 +373,7 @@ export default function AiChat({
       // 旧接口（保留，勿删）
       // const response = await fetch(`${backendUrl}/api/chat`, {
       // 新接口
-      const response = await fetch(`${backendUrl}/api/chat/test`, {
+      const response = await fetch(`${backendUrl}/api/chat/testnew`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -510,13 +518,68 @@ export default function AiChat({
                   lastUpdateTime = now;
                 }
               }
+              // 新增：处理 artifact_delta - 二次聊天时后端只返回修改的部分文件
+              // 格式与 artifact_file 相同：{ type: "artifact_delta", content: "{\"path\":\"...\",\"code\":\"...\",\"status\":\"...\"}" }
+            } else if (parsed.type === 'artifact_delta') {
+              // 接收到 delta 意味着思考结束
+              ensureThinkClosed();
+
+              // 🔍 调试：打印原始数据
+              console.log('🔍 artifact_delta received:', parsed);
+              console.log('🔍 currentFilesRef.current keys:', Object.keys(currentFilesRef.current));
+
+              // 解析 delta 内容，格式与 artifact_file 一致
+              let filePath = parsed.path || '';
+              let fileCode = parsed.code || '';
+
+              // 如果 path/code 为空，尝试从 content 解析（与 artifact_file 保持一致）
+              if (!filePath && parsed.content) {
+                try {
+                  const contentObj =
+                    typeof parsed.content === 'string'
+                      ? JSON.parse(parsed.content)
+                      : parsed.content;
+                  filePath = contentObj.path || '';
+                  fileCode = contentObj.code || '';
+                  console.log('🔍 Parsed from content:', { filePath, codeLength: fileCode.length });
+                } catch (e) {
+                  console.warn('Failed to parse artifact_delta content:', parsed.content, e);
+                }
+              }
+
+              if (filePath && fileCode) {
+                accumulatedFiles[filePath] = fileCode;
+                console.log(
+                  '✅ Accumulated delta file:',
+                  filePath,
+                  'Code length:',
+                  fileCode.length,
+                  'Total accumulated:',
+                  Object.keys(accumulatedFiles).length
+                );
+
+                const now = Date.now();
+                if (now - lastUpdateTime > 100) {
+                  // 合并历史文件快照，防止局部更新时丢失旧文件
+                  const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
+                  console.log('🔍 Merged files keys:', Object.keys(mergedFiles));
+                  if (onCodeUpdate) onCodeUpdate(mergedFiles);
+                  lastUpdateTime = now;
+                }
+              } else {
+                console.warn('❌ artifact_delta: filePath or fileCode is empty', {
+                  filePath: !!filePath,
+                  fileCode: !!fileCode,
+                });
+              }
             } else if (parsed.type === 'artifact_end') {
               ensureThinkClosed();
               console.log('Artifact end, total files:', Object.keys(accumulatedFiles).length);
 
               // ⚡️ 修复：最终合并并持久化
               const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
-              updateLocalFiles(accumulatedFiles); // 更新本地 ref，供下一轮使用
+              // 关键：更新本地 ref 为完整的合并结果，而不只是增量部分
+              updateLocalFiles(mergedFiles);
 
               if (onCodeUpdate) onCodeUpdate(mergedFiles);
               if (onCodeEnd) onCodeEnd();

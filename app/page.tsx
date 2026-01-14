@@ -60,6 +60,10 @@ export default function Home() {
             // }}
             // 新实现：接收多文件对象
             onCodeUpdate={(files) => {
+              console.log('📦 [page.tsx] onCodeUpdate received:', {
+                fileCount: Object.keys(files).length,
+                fileKeys: Object.keys(files),
+              });
               setGeneratedFiles(files);
               setStreamingFiles(files);
             }}
@@ -105,6 +109,17 @@ export default function Home() {
               isFullScreen={isFullScreen}
             /> */}
             {/* 新实现：传递多文件对象 */}
+            {(() => {
+              const filesToPass =
+                Object.keys(generatedFiles).length > 0 ? generatedFiles : streamingFiles;
+              console.log('🎨 [page.tsx] Passing to DashboardPreview:', {
+                source:
+                  Object.keys(generatedFiles).length > 0 ? 'generatedFiles' : 'streamingFiles',
+                fileCount: Object.keys(filesToPass).length,
+                fileKeys: Object.keys(filesToPass),
+              });
+              return null;
+            })()}
             <DashboardPreview
               files={Object.keys(generatedFiles).length > 0 ? generatedFiles : streamingFiles}
               isLoading={isLoading || isChatLoading}

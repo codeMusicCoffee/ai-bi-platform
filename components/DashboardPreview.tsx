@@ -84,12 +84,28 @@ export default function DashboardPreview({
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // 🔧 修复：filesKey 需要考虑文件内容变化，而不仅是文件名
+  // 否则当 artifact_delta 更新文件内容时，filesKey 不变，sandpackFiles 不会重新计算
   const filesKey = useMemo(() => {
     if (!files) return 'empty';
-    return Object.keys(files).sort().join(',') + '-' + Object.keys(files).length;
+    // 加入每个文件内容的长度，确保内容变化时 key 也变化
+    const contentSignature = Object.entries(files)
+      .map(([path, code]) => `${path}:${code.length}`)
+      .sort()
+      .join('|');
+    return contentSignature;
   }, [files]);
 
   const hasFiles = files && Object.keys(files).length > 0;
+
+  // 🔍 调试日志：追踪接收到的文件
+  console.log('🖼️ [DashboardPreview] Received props:', {
+    fileCount: files ? Object.keys(files).length : 0,
+    fileKeys: files ? Object.keys(files) : [],
+    isLoading,
+    hasFiles,
+    filesKey,
+  });
 
   const sandpackFiles = useMemo(() => {
     const defaultFiles: Record<string, string> = {
@@ -150,6 +166,12 @@ root.render(
         defaultFiles[normalizedPath] = code;
       });
     }
+
+    // 🔍 调试日志：最终传递给 Sandpack 的文件
+    console.log('🏗️ [DashboardPreview] sandpackFiles computed:', {
+      totalFiles: Object.keys(defaultFiles).length,
+      fileKeys: Object.keys(defaultFiles),
+    });
 
     return defaultFiles;
   }, [hasFiles, filesKey]);
