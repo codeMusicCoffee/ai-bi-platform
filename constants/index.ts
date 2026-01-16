@@ -8,6 +8,12 @@
  */
 // 使用空字符串，让请求通过 Next.js 代理
 // 使用环境变量，如果未定义则回退到 '/api'
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+// 旧实现（保留，勿删）
+// export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+
+// 新实现：处理生产环境为 '/' 时可能产生的双斜杠风险
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL === '/' 
+  ? '' 
+  : (process.env.NEXT_PUBLIC_API_BASE_URL || '');
 export const DEFAULT_PAGE_SIZE = 10;
 export const APP_NAME = 'AI BI Platform';
