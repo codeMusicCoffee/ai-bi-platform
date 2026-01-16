@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
-} from '@/components/ai-elements/conversation';
-import { Markdown } from '@/components/ai-elements/markdown';
-import { Message, MessageContent } from '@/components/ai-elements/message';
+} from "@/components/ai-elements/conversation";
+import { Markdown } from "@/components/ai-elements/markdown";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputAttachment,
@@ -15,18 +15,21 @@ import {
   PromptInputProvider,
   usePromptInputAttachments,
   usePromptInputController,
-} from '@/components/ai-elements/prompt-input';
-import { InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group';
-import { cn } from '@/lib/utils';
-import { chatService } from '@/services/chat';
-import { useChatStore } from '@/store/use-chat-store';
-import { Loader2, Paperclip, Send, Sparkles } from 'lucide-react';
-import { ComponentProps, useEffect, useRef, useState } from 'react';
+} from "@/components/ai-elements/prompt-input";
+import {
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
+import { chatService } from "@/services/chat";
+import { useChatStore } from "@/store/use-chat-store";
+import { Loader2, Paperclip, Send, Sparkles } from "lucide-react";
+import { ComponentProps, useEffect, useRef, useState } from "react";
 
 // Message interface
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
 }
@@ -92,12 +95,12 @@ const PromptTextarea = (props: ComponentProps<typeof InputGroupTextarea>) => {
 
 // Helper to convert dataURL to File
 function dataURLtoFile(dataurl: string, filename: string) {
-  const arr = dataurl.split(',');
+  const arr = dataurl.split(",");
   // Handle case where dataurl might be invalid or empty
   if (arr.length < 2) return null;
 
   const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
   const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);
@@ -107,7 +110,11 @@ function dataURLtoFile(dataurl: string, filename: string) {
   return new File([u8arr], filename, { type: mime });
 }
 
-const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: string) => void }) => {
+const FileAutoUploader = ({
+  onDatasetUploaded,
+}: {
+  onDatasetUploaded: (id: string) => void;
+}) => {
   const { files } = usePromptInputAttachments();
   const { sessionId, setSessionId } = useChatStore();
   const uploadedFileIds = useRef<Set<string>>(new Set());
@@ -124,47 +131,49 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
         uploadedFileIds.current.add(filePart.id);
 
         let file: File | null = null;
-        if (filePart.url.startsWith('blob:')) {
+        if (filePart.url.startsWith("blob:")) {
           try {
             const response = await fetch(filePart.url);
             const blob = await response.blob();
-            file = new File([blob], filePart.filename || 'file', { type: blob.type });
+            file = new File([blob], filePart.filename || "file", {
+              type: blob.type,
+            });
           } catch (error) {
-            console.error('Error fetching blob:', error);
+            console.error("Error fetching blob:", error);
           }
         } else {
-          file = dataURLtoFile(filePart.url, filePart.filename || 'file');
+          file = dataURLtoFile(filePart.url, filePart.filename || "file");
         }
 
         if (file) {
           const formData = new FormData();
-          formData.append('file', file);
+          formData.append("file", file);
           // Only append session_id if it exists
           if (sessionId) {
-            formData.append('session_id', sessionId);
+            formData.append("session_id", sessionId);
           }
 
           try {
-            console.log('Auto uploading file:', file.name);
+            console.log("Auto uploading file:", file.name);
 
             const response = await chatService.uploadDataset(formData);
             if (!response.success) {
-              console.error('File upload failed', response.message);
+              console.error("File upload failed", response.message);
               uploadedFileIds.current.delete(filePart.id);
             } else {
               const data = response.data;
-              console.log('File uploaded successfully', data);
+              console.log("File uploaded successfully", data);
               if (data.session_id && data.session_id !== sessionId) {
                 setSessionId(data.session_id);
-                console.log('Session ID set from upload:', data.session_id);
+                console.log("Session ID set from upload:", data.session_id);
               }
               if (data.id) {
                 onDatasetUploaded(data.id);
-                console.log('Dataset ID set locally:', data.id);
+                console.log("Dataset ID set locally:", data.id);
               }
             }
           } catch (e) {
-            console.error('File upload error', e);
+            console.error("File upload error", e);
             uploadedFileIds.current.delete(filePart.id);
           }
         }
@@ -214,7 +223,7 @@ const ChatDragDropArea = ({
 
   return (
     <div
-      className={cn('relative', className)}
+      className={cn("relative", className)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDropCapture={handleDrop}
@@ -239,7 +248,7 @@ export default function AiChat({
 }: AiChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingContent, setStreamingContent] = useState("");
   const isSubmittingRef = useRef(false);
   const datasetIdRef = useRef<string | null>(null);
 
@@ -261,7 +270,7 @@ export default function AiChat({
   // Load chat history when sessionId is available
 
   useEffect(() => {
-    console.log('sessionId', sessionId);
+    console.log("sessionId", sessionId);
     if (!sessionId) return;
     // 暂时注释获取session对话
     const fetchSession = async () => {
@@ -271,36 +280,48 @@ export default function AiChat({
         const response = await chatService.getSession(sessionId);
         if (!response.success) {
           if (response.code === 404) {
-            console.warn('Session not found, clearing local session');
+            console.warn("Session not found, clearing local session");
 
             return;
           }
-          throw new Error('Failed to fetch session');
+          throw new Error("Failed to fetch session");
         }
 
         const data = response.data;
 
         if (data.messages && Array.isArray(data.messages)) {
-          const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
-            id: msg.id || `history-${index}-${Date.now()}`,
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-          }));
+          const history: ChatMessage[] = data.messages.map(
+            (msg: any, index: number) => ({
+              id: msg.id || `history-${index}-${Date.now()}`,
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.created_at
+                ? new Date(msg.created_at).getTime()
+                : Date.now(),
+            })
+          );
           setMessages(history);
 
           // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
           // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
           const lastMsg = data.messages[data.messages.length - 1];
-          if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
-            const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
+          if (
+            lastMsg &&
+            Array.isArray(lastMsg.artifacts) &&
+            lastMsg.artifacts.length > 0
+          ) {
+            const lastArtifact =
+              lastMsg.artifacts[lastMsg.artifacts.length - 1];
             // 只处理 react 类型的 artifact，且包含 code
-            if (lastArtifact.type === 'react' && lastArtifact.code) {
-              console.log('Restoring code from history artifact:', lastArtifact.title);
+            if (lastArtifact.type === "react" && lastArtifact.code) {
+              console.log(
+                "Restoring code from history artifact:",
+                lastArtifact.title
+              );
 
               // ⚡️ 关键修复：同步更新本地文件快照
               // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
-              if (typeof lastArtifact.code === 'object') {
+              if (typeof lastArtifact.code === "object") {
                 // 如果 code 是多文件对象，直接更新
                 updateLocalFiles(lastArtifact.code);
               }
@@ -308,8 +329,8 @@ export default function AiChat({
               if (onCodeUpdate) {
                 // 兼容旧版 string 类型的 code
                 const filesObj =
-                  typeof lastArtifact.code === 'string'
-                    ? { '/App.tsx': lastArtifact.code }
+                  typeof lastArtifact.code === "string"
+                    ? { "/App.tsx": lastArtifact.code }
                     : lastArtifact.code;
                 onCodeUpdate(filesObj);
               }
@@ -321,7 +342,7 @@ export default function AiChat({
           }
         }
       } catch (error) {
-        console.error('Error loading session:', error);
+        console.error("Error loading session:", error);
       } finally {
         setIsLoading(false);
       }
@@ -339,15 +360,20 @@ export default function AiChat({
   const handleSendMessage = async (input: { text: string; files: any[] }) => {
     const userText = input.text.trim();
 
-    if ((!userText && input.files.length === 0) || isSubmittingRef.current) return;
+    if ((!userText && input.files.length === 0) || isSubmittingRef.current)
+      return;
 
     isSubmittingRef.current = true;
     updateLoadingState(true);
 
     const userMsg: ChatMessage = {
       id: generateId(),
-      role: 'user',
-      content: userText || (input.files.length > 0 ? `[Uploaded ${input.files.length} files]` : ''),
+      role: "user",
+      content:
+        userText ||
+        (input.files.length > 0
+          ? `[Uploaded ${input.files.length} files]`
+          : ""),
       timestamp: Date.now(),
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -357,24 +383,28 @@ export default function AiChat({
     if (currentSessionId) {
       setSessionId(currentSessionId);
     }
-    console.log('currentSessionId', currentSessionId);
+    console.log("currentSessionId", currentSessionId);
 
     try {
       if (input.files.length > 0) {
-        console.log('Sending message with files:', input.files.length);
+        console.log("Sending message with files:", input.files.length);
       }
 
-      // 新实现：本地直连后端避免代理缓存 SSE，生产环境使用相对路径
+      // 使用环境变量配置的后端地址
+      // 开发环境: NEXT_PUBLIC_BACKEND_URL (如 http://localhost:8000)
+      // 生产环境: NEXT_PUBLIC_API_BASE_URL (构建时注入，如 http://47.109.195.0:8000)
       const baseUrl =
-        process.env.NODE_ENV === 'development' ? process.env.NEXT_PUBLIC_BACKEND_URL : '';
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        "";
       const response = await fetch(`${baseUrl}/api/chat`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: userText }],
+          messages: [{ role: "user", content: userText }],
           session_id: currentSessionId,
           dataset_id: datasetIdRef.current,
         }),
@@ -385,10 +415,10 @@ export default function AiChat({
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法获取响应流');
+      if (!reader) throw new Error("无法获取响应流");
 
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
       let isFinished = false;
       let lastUpdateTime = 0;
 
@@ -398,8 +428,8 @@ export default function AiChat({
         ...prev,
         {
           id: assistantMsgId,
-          role: 'assistant',
-          content: '',
+          role: "assistant",
+          content: "",
           timestamp: Date.now(),
         },
       ]);
@@ -408,22 +438,22 @@ export default function AiChat({
       // let accumulatedCode = '';
       // 新实现：支持多文件
       let accumulatedFiles: Record<string, string> = {};
-      let accumulatedMessage = '';
+      let accumulatedMessage = "";
 
       while (!isFinished) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           const trimmedLine = line.trim();
-          if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
+          if (!trimmedLine || !trimmedLine.startsWith("data: ")) continue;
 
           const data = trimmedLine.slice(6);
-          if (data === '[DONE]') continue;
+          if (data === "[DONE]") continue;
 
           try {
             const parsed = JSON.parse(data);
@@ -431,29 +461,31 @@ export default function AiChat({
             // Helper to ensure think tag is closed when switching to other types
             const ensureThinkClosed = () => {
               if (
-                accumulatedMessage.includes('<think>') &&
-                !accumulatedMessage.includes('</think>')
+                accumulatedMessage.includes("<think>") &&
+                !accumulatedMessage.includes("</think>")
               ) {
-                accumulatedMessage += '</think>';
+                accumulatedMessage += "</think>";
                 // Update state immediately
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, content: accumulatedMessage } : msg
+                    msg.id === assistantMsgId
+                      ? { ...msg, content: accumulatedMessage }
+                      : msg
                   )
                 );
               }
             };
 
-            if (parsed.type === 'session_id') {
+            if (parsed.type === "session_id") {
               const newSessionId = parsed.content;
               if (newSessionId && newSessionId !== currentSessionId) {
                 setSessionId(newSessionId);
-                console.log('Session ID updated:', newSessionId);
+                console.log("Session ID updated:", newSessionId);
               }
-            } else if (parsed.type === 'artifact_start') {
+            } else if (parsed.type === "artifact_start") {
               // 新增：处理 artifact_start，标记开始生成文件，关闭思考
               ensureThinkClosed();
-              console.log('Artifact start:', parsed);
+              console.log("Artifact start:", parsed);
               // 不添加到消息中，只做状态处理
               // 旧实现（保留，勿删）：处理单文件 artifact_code
               // } else if (parsed.type === 'artifact_code') {
@@ -468,38 +500,41 @@ export default function AiChat({
               // }
 
               // 新实现：处理多文件 artifact_file
-            } else if (parsed.type === 'artifact_file') {
+            } else if (parsed.type === "artifact_file") {
               // 文件内容开始意味着思考结束
               ensureThinkClosed();
 
               // 修复：后端返回的数据格式可能是：
               // 1. { type: "artifact_file", path: "...", code: "..." }
               // 2. { type: "artifact_file", content: "{\"path\":\"...\",\"code\":\"...\"}" }
-              let filePath = parsed.path || '';
-              let fileCode = parsed.code || '';
+              let filePath = parsed.path || "";
+              let fileCode = parsed.code || "";
 
               // 如果 path/code 为空，尝试从 content 解析
               if (!filePath && parsed.content) {
                 try {
                   // content 可能是 JSON 字符串
                   const contentObj =
-                    typeof parsed.content === 'string'
+                    typeof parsed.content === "string"
                       ? JSON.parse(parsed.content)
                       : parsed.content;
-                  filePath = contentObj.path || '';
-                  fileCode = contentObj.code || '';
+                  filePath = contentObj.path || "";
+                  fileCode = contentObj.code || "";
                 } catch {
                   // 如果解析失败，content 可能就是普通字符串，忽略
-                  console.warn('Failed to parse artifact_file content:', parsed.content);
+                  console.warn(
+                    "Failed to parse artifact_file content:",
+                    parsed.content
+                  );
                 }
               }
 
               if (filePath && fileCode) {
                 accumulatedFiles[filePath] = fileCode;
                 console.log(
-                  'Accumulated file:',
+                  "Accumulated file:",
                   filePath,
-                  'Total files:',
+                  "Total files:",
                   Object.keys(accumulatedFiles).length
                 );
 
@@ -507,71 +542,99 @@ export default function AiChat({
                 if (now - lastUpdateTime > 100) {
                   // ⚡️ 修复：合并历史文件快照，防止局部更新时丢失旧文件
                   // 如果只传 accumulatedFiles，DashboardPreview 会以为只有这几个文件，导致应用崩溃或白屏
-                  const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
+                  const mergedFiles = {
+                    ...currentFilesRef.current,
+                    ...accumulatedFiles,
+                  };
                   if (onCodeUpdate) onCodeUpdate(mergedFiles);
                   lastUpdateTime = now;
                 }
               }
               // 新增：处理 artifact_delta - 二次聊天时后端只返回修改的部分文件
               // 格式与 artifact_file 相同：{ type: "artifact_delta", content: "{\"path\":\"...\",\"code\":\"...\",\"status\":\"...\"}" }
-            } else if (parsed.type === 'artifact_delta') {
+            } else if (parsed.type === "artifact_delta") {
               // 接收到 delta 意味着思考结束
               ensureThinkClosed();
 
               // 🔍 调试：打印原始数据
-              console.log('🔍 artifact_delta received:', parsed);
-              console.log('🔍 currentFilesRef.current keys:', Object.keys(currentFilesRef.current));
+              console.log("🔍 artifact_delta received:", parsed);
+              console.log(
+                "🔍 currentFilesRef.current keys:",
+                Object.keys(currentFilesRef.current)
+              );
 
               // 解析 delta 内容，格式与 artifact_file 一致
-              let filePath = parsed.path || '';
-              let fileCode = parsed.code || '';
+              let filePath = parsed.path || "";
+              let fileCode = parsed.code || "";
 
               // 如果 path/code 为空，尝试从 content 解析（与 artifact_file 保持一致）
               if (!filePath && parsed.content) {
                 try {
                   const contentObj =
-                    typeof parsed.content === 'string'
+                    typeof parsed.content === "string"
                       ? JSON.parse(parsed.content)
                       : parsed.content;
-                  filePath = contentObj.path || '';
-                  fileCode = contentObj.code || '';
-                  console.log('🔍 Parsed from content:', { filePath, codeLength: fileCode.length });
+                  filePath = contentObj.path || "";
+                  fileCode = contentObj.code || "";
+                  console.log("🔍 Parsed from content:", {
+                    filePath,
+                    codeLength: fileCode.length,
+                  });
                 } catch (e) {
-                  console.warn('Failed to parse artifact_delta content:', parsed.content, e);
+                  console.warn(
+                    "Failed to parse artifact_delta content:",
+                    parsed.content,
+                    e
+                  );
                 }
               }
 
               if (filePath && fileCode) {
                 accumulatedFiles[filePath] = fileCode;
                 console.log(
-                  '✅ Accumulated delta file:',
+                  "✅ Accumulated delta file:",
                   filePath,
-                  'Code length:',
+                  "Code length:",
                   fileCode.length,
-                  'Total accumulated:',
+                  "Total accumulated:",
                   Object.keys(accumulatedFiles).length
                 );
 
                 const now = Date.now();
                 if (now - lastUpdateTime > 100) {
                   // 合并历史文件快照，防止局部更新时丢失旧文件
-                  const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
-                  console.log('🔍 Merged files keys:', Object.keys(mergedFiles));
+                  const mergedFiles = {
+                    ...currentFilesRef.current,
+                    ...accumulatedFiles,
+                  };
+                  console.log(
+                    "🔍 Merged files keys:",
+                    Object.keys(mergedFiles)
+                  );
                   if (onCodeUpdate) onCodeUpdate(mergedFiles);
                   lastUpdateTime = now;
                 }
               } else {
-                console.warn('❌ artifact_delta: filePath or fileCode is empty', {
-                  filePath: !!filePath,
-                  fileCode: !!fileCode,
-                });
+                console.warn(
+                  "❌ artifact_delta: filePath or fileCode is empty",
+                  {
+                    filePath: !!filePath,
+                    fileCode: !!fileCode,
+                  }
+                );
               }
-            } else if (parsed.type === 'artifact_end') {
+            } else if (parsed.type === "artifact_end") {
               ensureThinkClosed();
-              console.log('Artifact end, total files:', Object.keys(accumulatedFiles).length);
+              console.log(
+                "Artifact end, total files:",
+                Object.keys(accumulatedFiles).length
+              );
 
               // ⚡️ 修复：最终合并并持久化
-              const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
+              const mergedFiles = {
+                ...currentFilesRef.current,
+                ...accumulatedFiles,
+              };
               // 关键：更新本地 ref 为完整的合并结果，而不只是增量部分
               updateLocalFiles(mergedFiles);
 
@@ -579,66 +642,78 @@ export default function AiChat({
               if (onCodeEnd) onCodeEnd();
               // 重置进度信息
               if (onProgressUpdate) onProgressUpdate(null);
-            } else if (parsed.type === 'progress') {
+            } else if (parsed.type === "progress") {
               // 处理进度信息
               try {
                 const progressData =
-                  typeof parsed.content === 'string' ? JSON.parse(parsed.content) : parsed.content;
+                  typeof parsed.content === "string"
+                    ? JSON.parse(parsed.content)
+                    : parsed.content;
 
                 const progressInfo: ProgressInfo = {
                   current: progressData.current || 0,
                   total: progressData.total || 0,
-                  component: progressData.component || '',
-                  stage: progressData.stage || '',
+                  component: progressData.component || "",
+                  stage: progressData.stage || "",
                 };
-                console.log('Progress update:', progressInfo);
+                console.log("Progress update:", progressInfo);
                 if (onProgressUpdate) onProgressUpdate(progressInfo);
               } catch {
-                console.warn('Failed to parse progress content:', parsed.content);
+                console.warn(
+                  "Failed to parse progress content:",
+                  parsed.content
+                );
               }
-            } else if (parsed.type === 'thinking') {
-              const content = parsed.content || '';
+            } else if (parsed.type === "thinking") {
+              const content = parsed.content || "";
               if (content) {
-                if (!accumulatedMessage.includes('<think>')) {
-                  accumulatedMessage += '<think>';
+                if (!accumulatedMessage.includes("<think>")) {
+                  accumulatedMessage += "<think>";
                 }
                 accumulatedMessage += content;
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, content: accumulatedMessage } : msg
+                    msg.id === assistantMsgId
+                      ? { ...msg, content: accumulatedMessage }
+                      : msg
                   )
                 );
               }
-            } else if (parsed.type === 'message') {
+            } else if (parsed.type === "message") {
               // 显式处理 message 类型
-              const content = parsed.content || parsed.text || parsed.delta || '';
+              const content =
+                parsed.content || parsed.text || parsed.delta || "";
               if (content) {
                 ensureThinkClosed();
 
                 accumulatedMessage += content;
                 setMessages((prev) =>
                   prev.map((msg) =>
-                    msg.id === assistantMsgId ? { ...msg, content: accumulatedMessage } : msg
+                    msg.id === assistantMsgId
+                      ? { ...msg, content: accumulatedMessage }
+                      : msg
                   )
                 );
               }
             } else {
               // 未知类型，记录日志但不添加到消息
-              console.log('Unknown message type:', parsed.type, parsed);
+              console.log("Unknown message type:", parsed.type, parsed);
             }
           } catch (e) {
-            console.warn('解析响应出错:', e);
+            console.warn("解析响应出错:", e);
           }
         }
       }
     } catch (error) {
-      console.error('生成失败:', error);
+      console.error("生成失败:", error);
       setMessages((prev) => [
         ...prev,
         {
           id: generateId(),
-          role: 'assistant',
-          content: `❌ 生成失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          role: "assistant",
+          content: `❌ 生成失败: ${
+            error instanceof Error ? error.message : "未知错误"
+          }`,
           timestamp: Date.now(),
         },
       ]);
@@ -650,7 +725,9 @@ export default function AiChat({
 
   return (
     <PromptInputProvider>
-      <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
+      <FileAutoUploader
+        onDatasetUploaded={(id) => (datasetIdRef.current = id)}
+      />
       <div className="flex flex-col h-full bg-white">
         {/* Header */}
         <div className="p-4 border-b border-gray-100 shrink-0">
@@ -658,7 +735,9 @@ export default function AiChat({
             <Sparkles className="w-5 h-5" />
             <h1 className="text-lg font-bold">Generative BI Local</h1>
           </div>
-          <p className="text-xs text-gray-400">Powered by Gemini Pro & Sandpack</p>
+          <p className="text-xs text-gray-400">
+            Powered by Gemini Pro & Sandpack
+          </p>
         </div>
 
         {/* Chat Area */}
@@ -675,13 +754,15 @@ export default function AiChat({
                 <Message key={msg.id} from={msg.role}>
                   <MessageContent
                     className={cn(
-                      'text-sm',
-                      msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3',
-                      msg.role === 'user' && '!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3'
+                      "text-sm",
+                      msg.role === "assistant" &&
+                        "bg-white border shadow-sm rounded-xl px-4 py-3",
+                      msg.role === "user" &&
+                        "!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3"
                     )}
                   >
                     {msg.content ? (
-                      msg.role === 'assistant' ? (
+                      msg.role === "assistant" ? (
                         <div className="prose prose-sm max-w-none">
                           {/* Parse and render thinking blocks vs main content */}
                           {(() => {
@@ -689,19 +770,30 @@ export default function AiChat({
                             const thinkMatch = msg.content.match(
                               /<think>([\s\S]*?)(?:<\/think>|$)/
                             );
-                            const thinkContent = thinkMatch ? thinkMatch[1] : null;
+                            const thinkContent = thinkMatch
+                              ? thinkMatch[1]
+                              : null;
 
                             // Determine if thinking is still active or ended
-                            const hasThinkingEnded = msg.content.includes('</think>');
-                            const isThinking = msg.content.includes('<think>') && !hasThinkingEnded;
+                            const hasThinkingEnded =
+                              msg.content.includes("</think>");
+                            const isThinking =
+                              msg.content.includes("<think>") &&
+                              !hasThinkingEnded;
 
                             let mainContent = msg.content.replace(
                               /<think>[\s\S]*?(?:<\/think>|$)/,
-                              ''
+                              ""
                             );
                             // Remove artifact blocks and self-closing tags
-                            mainContent = mainContent.replace(/<artifact[\s\S]*?<\/artifact>/g, '');
-                            mainContent = mainContent.replace(/<artifact[^>]*\/>/g, '');
+                            mainContent = mainContent.replace(
+                              /<artifact[\s\S]*?<\/artifact>/g,
+                              ""
+                            );
+                            mainContent = mainContent.replace(
+                              /<artifact[^>]*\/>/g,
+                              ""
+                            );
                             mainContent = mainContent.trim();
 
                             return (
@@ -712,12 +804,16 @@ export default function AiChat({
                                       <span>Thinking Process</span>
                                       {isThinking && (
                                         <div className="flex items-center gap-1 text-blue-500">
-                                          <span className="text-xs">AI思考中</span>
+                                          <span className="text-xs">
+                                            AI思考中
+                                          </span>
                                           <Loader2 className="w-3 h-3 animate-spin" />
                                         </div>
                                       )}
                                     </div>
-                                    <div className="whitespace-pre-wrap">{thinkContent}</div>
+                                    <div className="whitespace-pre-wrap">
+                                      {thinkContent}
+                                    </div>
                                   </div>
                                 )}
 
@@ -732,7 +828,9 @@ export default function AiChat({
                                     </div>
                                   )}
 
-                                {mainContent && <Markdown>{mainContent}</Markdown>}
+                                {mainContent && (
+                                  <Markdown>{mainContent}</Markdown>
+                                )}
                               </>
                             );
                           })()}
@@ -741,7 +839,9 @@ export default function AiChat({
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                       )
                     ) : (
-                      isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      isLoading && (
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      )
                     )}
                   </MessageContent>
                 </Message>

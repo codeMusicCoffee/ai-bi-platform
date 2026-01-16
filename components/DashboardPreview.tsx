@@ -1,24 +1,28 @@
-'use client';
+"use client";
 
-import { SandpackCodeEditor, SandpackPreview, SandpackProvider } from '@codesandbox/sandpack-react';
-import { githubLight } from '@codesandbox/sandpack-themes';
-import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  SandpackCodeEditor,
+  SandpackPreview,
+  SandpackProvider,
+} from "@codesandbox/sandpack-react";
+import { githubLight } from "@codesandbox/sandpack-themes";
+import { FileCode, Loader2, Play, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 // 导入进度信息类型
-import type { ProgressInfo } from './AiChat';
-import DashboardEmptyState from './DashboardEmptyState';
+import type { ProgressInfo } from "./AiChat";
+import DashboardEmptyState from "./DashboardEmptyState";
 
-type ViewMode = 'preview' | 'code';
+type ViewMode = "preview" | "code";
 
 function normalizePath(path: string) {
-  return path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
+  return path.startsWith("/") ? path : `/${path.replace(/^\.\//, "")}`;
 }
 
 function makeSignature(files: Record<string, string>) {
   const entries = Object.entries(files)
     .map(([p, c]) => [normalizePath(p), c] as const)
     .sort((a, b) => a[0].localeCompare(b[0]));
-  return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join('\n@@\n');
+  return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join("\n@@\n");
 }
 
 // 支持多文件 artifact 和进度信息
@@ -37,7 +41,7 @@ export default function DashboardPreview({
   progress?: ProgressInfo | null;
   chatInit?: boolean;
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>('preview');
+  const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [refreshKey, setRefreshKey] = useState(0);
 
   // 🔧 修复：filesKey 需要考虑文件内容变化，而不仅是文件名
@@ -49,7 +53,7 @@ export default function DashboardPreview({
   // 还原正常的 sandpackFiles 逻辑
   const sandpackFiles = useMemo(() => {
     const defaultFiles: Record<string, string> = {
-      '/App.tsx': `import React from 'react';
+      "/App.tsx": `import React from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
 
 export default function App() { 
@@ -88,7 +92,7 @@ export default function App() {
     </div>
   ) 
 }`,
-      '/index.tsx': `import React, { StrictMode } from "react";
+      "/index.tsx": `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
@@ -98,7 +102,7 @@ root.render(
     <App />
   </StrictMode>
 );`,
-      '/public/index.html': `<!DOCTYPE html>
+      "/public/index.html": `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -113,7 +117,9 @@ root.render(
 
     if (hasFiles && files) {
       Object.entries(files).forEach(([path, code]) => {
-        const normalizedPath = path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
+        const normalizedPath = path.startsWith("/")
+          ? path
+          : `/${path.replace(/^\.\//, "")}`;
         defaultFiles[normalizedPath] = code;
       });
     }
@@ -121,29 +127,29 @@ root.render(
   }, [hasFiles, filesKey, files]);
 
   const dependencies = {
-    react: '18.3.1',
-    'react-dom': '18.3.1',
-    recharts: '3.6.0',
-    'lucide-react': '0.400.0',
-    'framer-motion': '11.0.3',
-    clsx: '2.1.1',
-    'tailwind-merge': '2.5.2',
-    'react-is': '18.3.1',
-    'date-fns': '3.6.0',
+    react: "18.3.1",
+    "react-dom": "18.3.1",
+    recharts: "3.6.0",
+    "lucide-react": "0.400.0",
+    "framer-motion": "11.0.3",
+    clsx: "2.1.1",
+    "tailwind-merge": "2.5.2",
+    "react-is": "18.3.1",
+    "date-fns": "3.6.0",
   };
   // 稳定 customSetup 对象
   const customSetup = useMemo(
     () => ({
       // 1. 强制配置 npm 镜像源为淘宝源
-      // npmRegistries: [
-      //   {
-      //     // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-      //     enabledScopes: [],
-      //     limitToScopes: false,
-      //     registryUrl: 'https://registry.npmmirror.com/',
-      //     proxyEnabled: false,
-      //   },
-      // ],
+      npmRegistries: [
+        {
+          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
+          enabledScopes: [],
+          limitToScopes: false,
+          registryUrl: "https://registry.npmmirror.com/",
+          proxyEnabled: false,
+        },
+      ],
       dependencies,
     }),
     []
@@ -151,8 +157,8 @@ root.render(
 
   const options = useMemo(
     () => ({
-      externalResources: ['https://cdn.tailwindcss.com'],
-      recompileMode: 'delayed' as const,
+      externalResources: ["https://cdn.tailwindcss.com"],
+      recompileMode: "delayed" as const,
       recompileDelay: 500,
       // 使用自定义 bundler URL 可以避免遥测请求（可选）
       // bundlerURL: 'https://sandpack-bundler.codesandbox.io',
@@ -181,10 +187,15 @@ root.render(
     }
 
     // 只有在 refreshId 从非 0 变化时才触发（跳过首次初始化）
-    if (prevRefreshIdRef.current !== undefined && prevRefreshIdRef.current !== 0) {
-      console.log('🔄 [DashboardPreview] refreshId changed, incrementing previewKey');
-      console.log('  - Previous refreshId:', prevRefreshIdRef.current);
-      console.log('  - Current refreshId:', refreshId);
+    if (
+      prevRefreshIdRef.current !== undefined &&
+      prevRefreshIdRef.current !== 0
+    ) {
+      console.log(
+        "🔄 [DashboardPreview] refreshId changed, incrementing previewKey"
+      );
+      console.log("  - Previous refreshId:", prevRefreshIdRef.current);
+      console.log("  - Current refreshId:", refreshId);
       setPreviewKey((k) => k + 1);
     }
 
@@ -193,29 +204,29 @@ root.render(
   return (
     <div
       className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
-        isFullScreen ? 'fixed inset-0 z-50 border-0 rounded-none' : ''
+        isFullScreen ? "fixed inset-0 z-50 border-0 rounded-none" : ""
       }`}
     >
       {/* 自定义 Tab 切换按钮 - 全屏模式下隐藏 */}
       {!isFullScreen && (
         <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
           <button
-            onClick={() => setViewMode('preview')}
+            onClick={() => setViewMode("preview")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'preview'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              viewMode === "preview"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
             }`}
           >
             <Play className="w-4 h-4" />
             Preview
           </button>
           <button
-            onClick={() => setViewMode('code')}
+            onClick={() => setViewMode("code")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'code'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              viewMode === "code"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
             }`}
           >
             <FileCode className="w-4 h-4" />
@@ -245,14 +256,16 @@ root.render(
           {/* 预览视图：始终显示，Loading 只是 Overlay */}
           <div
             className={`w-full h-full absolute inset-0 bg-white ${
-              viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+              viewMode === "preview"
+                ? "z-10"
+                : "z-0 opacity-0 pointer-events-none"
             }`}
           >
             <SandpackPreview
               showNavigator={false}
               showRefreshButton={true}
               showOpenInCodeSandbox={false}
-              style={{ height: '100%' }}
+              style={{ height: "100%" }}
             />
 
             {/* 当处于初始状态时显示空状态占位 */}
@@ -280,12 +293,16 @@ root.render(
                   <p className="text-xs text-indigo-500 mt-2 font-medium">
                     正在生成第 {progress.current}/{progress.total} 个组件
                     {progress.component && (
-                      <span className="ml-1 text-gray-400">({progress.component})</span>
+                      <span className="ml-1 text-gray-400">
+                        ({progress.component})
+                      </span>
                     )}
                   </p>
                 )}
 
-                <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  您可以切换到 Code 标签查看实时进度
+                </p>
               </div>
             )}
           </div>
@@ -293,7 +310,7 @@ root.render(
           {/* 代码视图：始终显示编辑器，方便查看流式生成 */}
           <div
             className={`w-full h-full absolute inset-0 bg-white ${
-              viewMode === 'code' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+              viewMode === "code" ? "z-10" : "z-0 opacity-0 pointer-events-none"
             }`}
           >
             {isLoading ? (
@@ -315,7 +332,7 @@ root.render(
                 showTabs={true}
                 showInlineErrors={true}
                 wrapContent={true}
-                style={{ height: '100%' }}
+                style={{ height: "100%" }}
                 readOnly={false}
               />
             )}
