@@ -46,15 +46,6 @@ export default function DashboardPreview({
 
   const hasFiles = files && Object.keys(files).length > 0;
 
-  // 🔍 调试日志：追踪接收到的文件
-  console.log('🖼️ [DashboardPreview] Received props:', {
-    fileCount: files ? Object.keys(files).length : 0,
-    fileKeys: files ? Object.keys(files) : [],
-    isLoading,
-    hasFiles,
-    filesKey,
-  });
-
   // 还原正常的 sandpackFiles 逻辑
   const sandpackFiles = useMemo(() => {
     const defaultFiles: Record<string, string> = {
@@ -126,7 +117,6 @@ root.render(
         defaultFiles[normalizedPath] = code;
       });
     }
-    console.log('defaultFiles', defaultFiles);
     return defaultFiles;
   }, [hasFiles, filesKey, files]);
 

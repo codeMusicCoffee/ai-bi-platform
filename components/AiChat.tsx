@@ -18,6 +18,7 @@ import {
 } from '@/components/ai-elements/prompt-input';
 import { InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group';
 import { cn } from '@/lib/utils';
+import { chatService } from '@/services/chat';
 import { useChatStore } from '@/store/use-chat-store';
 import { Loader2, Paperclip, Send, Sparkles } from 'lucide-react';
 import { ComponentProps, useEffect, useRef, useState } from 'react';
@@ -113,7 +114,8 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
 
   useEffect(() => {
     const handleUpload = async () => {
-      const backendUrl = 'http://localhost:8000';
+      // 旧实现（保留，勿删）
+      // const backendUrl = 'http://192.168.110.29:8000';
 
       for (const filePart of files) {
         if (uploadedFileIds.current.has(filePart.id)) continue;
@@ -144,15 +146,13 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
 
           try {
             console.log('Auto uploading file:', file.name);
-            const uploadRes = await fetch(`${backendUrl}/api/datasets`, {
-              method: 'POST',
-              body: formData,
-            });
-            if (!uploadRes.ok) {
-              console.error('File upload failed', await uploadRes.text());
+
+            const response = await chatService.uploadDataset(formData);
+            if (!response.success) {
+              console.error('File upload failed', response.message);
               uploadedFileIds.current.delete(filePart.id);
             } else {
-              const data = await uploadRes.json();
+              const data = response.data;
               console.log('File uploaded successfully', data);
               if (data.session_id && data.session_id !== sessionId) {
                 setSessionId(data.session_id);
@@ -264,75 +264,71 @@ export default function AiChat({
     console.log('sessionId', sessionId);
     if (!sessionId) return;
     // 暂时注释获取session对话
-    // const fetchSession = async () => {
-    //   try {
-    //     // 仅设置本地 Loading，不触发父组件的 Generating 状态
-    //     setIsLoading(true);
-    //     const backendUrl = 'http://localhost:8000';
-    //     const res = await fetch(`${backendUrl}/api/sessions/${sessionId}`);
+    const fetchSession = async () => {
+      try {
+        // 仅设置本地 Loading，不触发父组件的 Generating 状态
+        setIsLoading(true);
+        const response = await chatService.getSession(sessionId);
+        if (!response.success) {
+          if (response.code === 404) {
+            console.warn('Session not found, clearing local session');
 
-    //     if (!res.ok) {
-    //       if (res.status === 404) {
-    //         console.warn('Session not found, clearing local session');
-    //         // Optionally clear invalid session: setSessionId(null);
-    //         return;
-    //       }
-    //       throw new Error('Failed to fetch session');
-    //     }
+            return;
+          }
+          throw new Error('Failed to fetch session');
+        }
 
-    //     const data = await res.json();
+        const data = response.data;
 
-    //     if (data.messages && Array.isArray(data.messages)) {
-    //       const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
-    //         id: msg.id || `history-${index}-${Date.now()}`,
-    //         role: msg.role,
-    //         content: msg.content,
-    //         timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-    //       }));
-    //       setMessages(history);
+        if (data.messages && Array.isArray(data.messages)) {
+          const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
+            id: msg.id || `history-${index}-${Date.now()}`,
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+          }));
+          setMessages(history);
 
-    //       // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
-    //       // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
-    //       const lastMsg = data.messages[data.messages.length - 1];
-    //       if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
-    //         const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
-    //         // 只处理 react 类型的 artifact，且包含 code
-    //         if (lastArtifact.type === 'react' && lastArtifact.code) {
-    //           console.log('Restoring code from history artifact:', lastArtifact.title);
+          // ⚡️ 核心功能：恢复历史会话时，自动提取最后一条消息的代码并渲染
+          // 要求：最后一条消息 -> artifacts 数组最后一条 -> code
+          const lastMsg = data.messages[data.messages.length - 1];
+          if (lastMsg && Array.isArray(lastMsg.artifacts) && lastMsg.artifacts.length > 0) {
+            const lastArtifact = lastMsg.artifacts[lastMsg.artifacts.length - 1];
+            // 只处理 react 类型的 artifact，且包含 code
+            if (lastArtifact.type === 'react' && lastArtifact.code) {
+              console.log('Restoring code from history artifact:', lastArtifact.title);
 
-    //           // ⚡️ 关键修复：同步更新本地文件快照
-    //           // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
-    //           if (typeof lastArtifact.code === 'object') {
-    //             // 如果 code 是多文件对象，直接更新
-    //             updateLocalFiles(lastArtifact.code);
-    //           }
+              // ⚡️ 关键修复：同步更新本地文件快照
+              // 确保二次聊天返回 artifact_delta 时，能够正确合并已有文件
+              if (typeof lastArtifact.code === 'object') {
+                // 如果 code 是多文件对象，直接更新
+                updateLocalFiles(lastArtifact.code);
+              }
 
-    //           if (onCodeUpdate) {
-    //             // 兼容旧版 string 类型的 code
-    //             const filesObj =
-    //               typeof lastArtifact.code === 'string'
-    //                 ? { '/App.tsx': lastArtifact.code }
-    //                 : lastArtifact.code;
-    //             onCodeUpdate(filesObj);
-    //           }
-    //           if (onCodeEnd) {
-    //             // 标记生成/流式传输结束，确保状态为"完成"
-    //             onCodeEnd();
-    //           }
-    //         }
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error('Error loading session:', error);
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // };
-
-    // fetchSession();
+              if (onCodeUpdate) {
+                // 兼容旧版 string 类型的 code
+                const filesObj =
+                  typeof lastArtifact.code === 'string'
+                    ? { '/App.tsx': lastArtifact.code }
+                    : lastArtifact.code;
+                onCodeUpdate(filesObj);
+              }
+              if (onCodeEnd) {
+                // 标记生成/流式传输结束，确保状态为"完成"
+                onCodeEnd();
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSession();
   }, [sessionId]);
 
-  // Wrapper for setting loading state and notifying parent
   const updateLoadingState = (loading: boolean) => {
     setIsLoading(loading);
     if (onStatusChange) {
@@ -342,13 +338,12 @@ export default function AiChat({
 
   const handleSendMessage = async (input: { text: string; files: any[] }) => {
     const userText = input.text.trim();
-    // Allow empty text if there are files (though usually we want text descriptions for files)
+
     if ((!userText && input.files.length === 0) || isSubmittingRef.current) return;
 
     isSubmittingRef.current = true;
     updateLoadingState(true);
 
-    // Update UI immediately
     const userMsg: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -365,20 +360,14 @@ export default function AiChat({
     console.log('currentSessionId', currentSessionId);
 
     try {
-      const backendUrl = 'http://localhost:8000';
-
-      // 1. Upload files first if any
-      // Files are now auto-uploaded by FileAutoUploader component
-      // We just logging here for debug
       if (input.files.length > 0) {
         console.log('Sending message with files:', input.files.length);
       }
 
-      // 2. Send Chat Message
-      // 旧接口（保留，勿删）
-      // const response = await fetch(`${backendUrl}/api/chat`, {
-      // 新接口
-      const response = await fetch(`${backendUrl}/api/chat/testnew`, {
+      // 新实现：本地直连后端避免代理缓存 SSE，生产环境使用相对路径
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? process.env.NEXT_PUBLIC_BACKEND_URL : '';
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

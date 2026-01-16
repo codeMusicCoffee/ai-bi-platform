@@ -19,17 +19,21 @@ export const chatService = {
    * @param message User's requirement description
    * @returns Generated code and other metadata
    */
-  generateDashboard: (message: string) => {
-    return request.post<ChatGenerateResponse>('/api/chat', {
-      messages: [
-        {
-          role: "user",
-          content: message
-        }
-      ],
-      provider: "deepseek"
-    });
+
+  /**
+   * Get session history
+   */
+  getSession: (sessionId: string) => {
+    return request.get(`/api/sessions/${sessionId}`);
   },
+
+  /**
+   * Upload a dataset file
+   */
+  uploadDataset: (formData: FormData) => {
+    return request.upload('/api/datasets', formData);
+  },
+
   testHealth: () => {
     return request.get('/health');
   }
