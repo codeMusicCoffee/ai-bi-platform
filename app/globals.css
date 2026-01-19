@@ -8,15 +8,15 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-  --radius: 0.625rem;
+  --radius: 0.5em;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.62 0.23 255);        /* #306EFD */
+  --primary-foreground: oklch(1 0 0);     /* white */
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -40,6 +40,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* 统一使用 oklch 变量 */
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: var(--primary); /* 让 ring 默认跟随主题色 */
 }
 
 body {
@@ -157,5 +161,44 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", sans-serif;
+
   }
+}
+
+
+/* 统一表单控件的基础样式，避免高度冲突 */
+input,
+textarea,
+select,
+button {
+  box-shadow: none !important;
+}
+
+input,
+textarea {
+  border: 1px solid #dcdfe6 !important; /* 强制使用 1px 细边框 */
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1) !important;
+}
+
+input:hover,
+textarea:hover {
+  border-color: #c0c4cc !important;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  outline: none !important;
+  /* 彻底移除阴影，只保留 1px 的边框变色 */
+  box-shadow: none !important;
+}
+
+button {
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
 }

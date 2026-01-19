@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css'; // 👈 必须引入这个文件！
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'AI BI Platform',
@@ -21,7 +18,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://sandpack.codesandbox.io" />
         <link rel="dns-prefetch" href="https://sandpack.codesandbox.io" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>
