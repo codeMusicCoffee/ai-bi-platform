@@ -6,6 +6,8 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } f
 interface RequestOptions extends AxiosRequestConfig {
   skipAuth?: boolean;
   skipErrorHandler?: boolean;
+  successMsg?: string;
+  showSuccessMsg?: boolean;
 }
 
 // 错误类型枚举
@@ -77,7 +79,21 @@ class RequestClient {
         this.logResponse(response, config.metadata?.requestId, duration);
 
         // 标准化响应
-        return this.normalizeResponse(response);
+        const options = response.config as RequestOptions;
+        const normalized = this.normalizeResponse(response);
+        
+        // 成功提示处理
+        if (normalized.success && (options.showSuccessMsg || options.successMsg )) {
+          const message =  options.successMsg|| '操作成功'|| normalized.message ;
+          // 延迟导入或者使用全局变量，避免循环依赖或在非浏览器环境报错
+          import('sonner').then(({ toast }) => {
+            toast.success(message);
+          }).catch(() => {
+            console.log('✅ ' + message);
+          });
+        }
+
+        return normalized;
       },
       (error) => {
         const config = error.config as any;
@@ -133,15 +149,20 @@ class RequestClient {
     
     // 如果后端已经返回标准格式
     if (data && typeof data === 'object' && 'code' in data) {
+      // 补充 success 标识，兼容 code 为 0 或 2xx 的场景
+      if (!('success' in data)) {
+        data.success = data.code === 0 || (data.code >= 200 && data.code < 300);
+      }
       return data;
     }
+
     
     // 包装成标准格式
     return {
       code: status,
       success: status >= 200 && status < 300,
       data: data,
-      message: 'Success',
+      message: '操作成功',
       timestamp: Date.now(),
     };
   }
@@ -361,5 +382,5 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // 导出
-export { RequestClient, ErrorType };
+export { ErrorType, RequestClient };
 export default request;

@@ -11,9 +11,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // 静态导出模式 - 生成纯 HTML/CSS/JS，使用 Nginx 托管
   output: "export",
+  images: { unoptimized: true },
 
   // 可选：生成 .html 后缀的文件
   // trailingSlash: true,
+
+  async rewrites() {
+    return [
+      {
+        source: '/test/:path*',
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/:path*`,
+      },
+    ];
+  },
 };
+
 
 export default nextConfig;

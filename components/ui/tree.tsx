@@ -2,7 +2,7 @@
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { ChevronRight, File, Folder, FolderOpen } from 'lucide-react';
+import { ChevronRight, File, Folder, FolderOpen, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
 export interface TreeDataItem {
@@ -19,6 +19,8 @@ interface TreeProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect
   initialExpandedIds?: string[];
   onNodeClick?: (item: TreeDataItem) => void;
   selectedId?: string;
+  loading?: boolean;
+
   /**
    * Whether to show default folder/file icons
    * @default true
@@ -47,6 +49,7 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
       initialExpandedIds,
       onNodeClick,
       selectedId,
+      loading,
       showDefaultIcons = true,
       renderIcon,
       renderActions,
@@ -56,24 +59,50 @@ const Tree = React.forwardRef<HTMLDivElement, TreeProps>(
     ref
   ) => {
     return (
-      <div ref={ref} className={cn('select-none space-y-1', className)} {...props}>
-        {data.map((item) => (
-          <TreeNode
-            key={item.id}
-            item={item}
-            initialExpandedIds={initialExpandedIds}
-            onNodeClick={onNodeClick}
-            selectedId={selectedId}
-            showDefaultIcons={showDefaultIcons}
-            renderIcon={renderIcon}
-            renderActions={renderActions}
-            level={0}
-          />
-        ))}
+      <div
+        ref={ref}
+        className={cn(
+          'relative select-none space-y-1',
+          data.length === 0 && 'flex flex-col h-full',
+          className
+        )}
+        {...props}
+      >
+        {/* 树节点列表 */}
+        {data.length > 0
+          ? data.map((item) => (
+              <TreeNode
+                key={item.id}
+                item={item}
+                initialExpandedIds={initialExpandedIds}
+                onNodeClick={onNodeClick}
+                selectedId={selectedId}
+                showDefaultIcons={showDefaultIcons}
+                renderIcon={renderIcon}
+                renderActions={renderActions}
+                level={0}
+              />
+            ))
+          : !loading && (
+              <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in duration-500">
+                <img src="/images/empty.svg" alt="暂无数据" className="w-32 h-32 mb-2 opacity-80" />
+                <span style={{ color: '#9EABC2', fontSize: '14px' }}>暂无内容</span>
+              </div>
+            )}
+        {/* Loading 遮罩层 */}
+        {loading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[1px] transition-all duration-300">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-500/80" />
+              <span className="text-sm font-medium text-gray-500">数据加载中...</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 );
+
 Tree.displayName = 'Tree';
 
 interface TreeNodeProps {
@@ -111,10 +140,31 @@ const TreeNode = ({
   level,
   parentItem,
 }: TreeNodeProps) => {
-  const [isOpen, setIsOpen] = React.useState(initialExpandedIds?.includes(item.id) || false);
+  // 递归检查子树是否包含选中节点
+  const hasSelectedChild = React.useCallback(
+    (node: TreeDataItem): boolean => {
+      if (node.children) {
+        return node.children.some((child) => child.id === selectedId || hasSelectedChild(child));
+      }
+      return false;
+    },
+    [selectedId]
+  );
+
+  const isSelected = selectedId === item.id;
+
+  const [isOpen, setIsOpen] = React.useState(
+    initialExpandedIds?.includes(item.id) || isSelected || hasSelectedChild(item) || false
+  );
+
+  // 当外部 selectedId 变化时，如果选中了当前节点或其子节点，自动展开
+  React.useEffect(() => {
+    if (selectedId && (item.id === selectedId || hasSelectedChild(item))) {
+      setIsOpen(true);
+    }
+  }, [selectedId, item.id, hasSelectedChild]);
 
   const hasChildren = item.children && item.children.length > 0;
-  const isSelected = selectedId === item.id;
 
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();

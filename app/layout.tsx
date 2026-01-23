@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import './globals.css'; // 👈 必须引入这个文件！
+import { Toaster } from 'sonner';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'AI BI Platform',
@@ -20,6 +21,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased" suppressHydrationWarning>
         {children}
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

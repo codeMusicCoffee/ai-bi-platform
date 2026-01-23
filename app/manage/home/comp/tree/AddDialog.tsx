@@ -1,5 +1,6 @@
 'use client';
 
+import ImageUploader from '@/components/ImageUploader';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,9 +13,9 @@ import { Input } from '@/components/ui/input';
 import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import * as z from 'zod';
 
-export type CategoryFormType = '品类' | '系列' | '品牌';
+export type CategoryFormType = '品类' | '系列' | '品牌' | '产品';
 
-interface CategoryFormDialogProps {
+interface AddDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'edit';
@@ -22,11 +23,12 @@ interface CategoryFormDialogProps {
   parentName?: string;
   initialData?: {
     name: string;
+    image_url?: string;
   };
-  onSubmit: (data: { name: string }) => void;
+  onSubmit: (data: { name: string; image_url?: string }) => void;
 }
 
-export function CategoryFormDialog({
+export function AddDialog({
   open,
   onOpenChange,
   mode,
@@ -34,11 +36,12 @@ export function CategoryFormDialog({
   parentName,
   initialData,
   onSubmit,
-}: CategoryFormDialogProps) {
+}: AddDialogProps) {
   const title = mode === 'create' ? `新建${type}` : `编辑${type}`;
 
   const schema = z.object({
     name: z.string().min(1, { message: `请输入${type}名称` }),
+    image_url: z.string().optional(),
   });
 
   type FormValues = z.infer<typeof schema>;
@@ -63,7 +66,7 @@ export function CategoryFormDialog({
           {parentName && (
             <div className="grid gap-2 mb-4">
               <label className="text-[13px] font-medium text-gray-400">
-                {type === '系列' ? '所属品类' : '所属系列'}
+                {type === '系列' ? '所属品类' : type === '品牌' ? '所属系列' : '所属品牌'}
               </label>
               <Input
                 value={parentName}
@@ -76,28 +79,48 @@ export function CategoryFormDialog({
           <SealedForm
             schema={schema}
             fields={fields}
-            defaultValues={{ name: initialData?.name || '' }}
+            defaultValues={{
+              name: initialData?.name || '',
+              image_url: initialData?.image_url || '',
+            }}
             onSubmit={(data) => {
               onSubmit(data);
               onOpenChange(false);
             }}
           >
-            <DialogFooter className="mt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="h-9 px-4 rounded-md"
-              >
-                取消
-              </Button>
-              <Button
-                type="submit"
-                className="h-9 px-4 rounded-md bg-primary text-primary-foreground"
-              >
-                确认
-              </Button>
-            </DialogFooter>
+            {({ form, fields }) => (
+              <>
+                <div className="grid gap-4">
+                  {fields}
+                  {type === '产品' && (
+                    <div className="grid gap-2">
+                      <label className="text-[14px] font-medium text-gray-700">产品图片</label>
+                      <ImageUploader
+                        value={form.watch('image_url')}
+                        onChange={(url) => form.setValue('image_url', url)}
+                        className="w-full h-[120px]"
+                      />
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="h-9 px-4 rounded-md shadow-none border-gray-200"
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="h-9 px-6 rounded-md bg-[#306EFD] hover:bg-[#285cd1] text-white shadow-none"
+                  >
+                    确认
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
           </SealedForm>
         </div>
       </DialogContent>

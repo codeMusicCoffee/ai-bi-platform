@@ -2,6 +2,13 @@
 
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,59 +17,47 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Tree, TreeDataItem } from '@/components/ui/tree';
-import { ExternalLink, MoreVertical, Plus, Search } from 'lucide-react';
-export const MOCK_DATA: TreeDataItem[] = [
-  {
-    id: '1',
-    label: '星木自然',
-    children: [
-      {
-        id: '1-1',
-        label: '草本系列',
-        children: [
-          { id: '1-1-1', label: '毛铺草本酒' },
-          { id: '1-1-2', label: '草本荞调' },
-          { id: '1-1-3', label: '单本年份酒' },
-        ],
-      },
-    ],
-  },
-  {
-    id: '2',
-    label: '劲牌酒',
-    children: [
-      {
-        id: '2-1',
-        label: '劲酒系列',
-        children: [
-          {
-            id: '2-1-1',
-            label: '中国劲酒数字号',
-            children: [{ id: '2-1-1-1', label: '125ml-35度酒' }],
-          },
-        ],
-      },
-    ],
-  },
-  { id: '3', label: '金标系列' },
-  { id: '4', label: '蓝标系列' },
-];
+import { AlertCircle, ExternalLink, MoreVertical, Plus, Search, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface CategoryTreeProps {
+  data: TreeDataItem[];
   selectedId: string;
+  loading?: boolean;
   onSelect: (node: TreeDataItem, level: number) => void;
   onEdit: (item: TreeDataItem, level: number, parentItem?: TreeDataItem) => void;
   onCreate: (item: TreeDataItem, level: number) => void;
+  onDelete: (item: TreeDataItem) => void;
   onAddRoot: () => void;
 }
 
 export function CategoryTree({
+  data,
   selectedId,
+  loading,
   onSelect,
+
   onEdit,
   onCreate,
+  onDelete,
   onAddRoot,
 }: CategoryTreeProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<TreeDataItem | null>(null);
+
+  const handleDeleteClick = (item: TreeDataItem) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (itemToDelete) {
+      onDelete(itemToDelete);
+    }
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+  };
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
       <div className="p-4 flex flex-col gap-4">
@@ -75,23 +70,19 @@ export function CategoryTree({
         </div>
         <Separator className="bg-gray-200" />
 
-        <Button
-          className="w-full bg-primary text-primary-foreground h-9 rounded-[8px] cursor-pointer"
-          onClick={onAddRoot}
-        >
+        <Button className="w-full h-9 rounded-[8px] cursor-pointer" onClick={onAddRoot}>
           <Plus className="mr-2 h-4 w-4" /> 新建品类
         </Button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
+      <nav className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col">
         {/* 新实现 */}
         <Tree
-          data={MOCK_DATA}
+          data={data}
           selectedId={selectedId}
+          loading={loading}
+          className="flex-1"
           onNodeClick={(node) => {
-            // 需要一个方式来计算 level
-            // 简单处理：在 TreeDataItem 中存储或者在这里递归寻找
-            // 为了简单，我们只在 CategoryTree 内部处理点击，然后传出去
             const findLevel = (
               nodes: TreeDataItem[],
               targetId: string,
@@ -106,17 +97,17 @@ export function CategoryTree({
               }
               return -1;
             };
-            const level = findLevel(MOCK_DATA, node.id);
+            const level = findLevel(data, node.id);
             onSelect(node, level);
           }}
-          initialExpandedIds={['1', '2', '2-1']}
+          initialExpandedIds={[]}
           renderIcon={({ level }) => {
             if (level >= 3) return null;
             const iconPath = `/images/manage/home/level${level + 1}.svg`;
             return <img src={iconPath} alt={`level-${level}`} className="w-4 h-4 shrink-0" />;
           }}
           renderActions={({ item, level, parentItem }) =>
-            level < 3 && (
+            level < 4 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 transition-colors">
@@ -134,7 +125,7 @@ export function CategoryTree({
                     <ExternalLink className="mr-2 h-3.5 w-3.5" />
                     <span>编辑</span>
                   </DropdownMenuItem>
-                  {level <= 1 && (
+                  {level <= 2 && (
                     <DropdownMenuItem
                       className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer"
                       onClick={(e) => {
@@ -143,15 +134,58 @@ export function CategoryTree({
                       }}
                     >
                       <Plus className="mr-2 h-3.5 w-3.5" />
-                      <span>{level === 0 ? '新建系列' : '新建品牌'}</span>
+                      <span>
+                        {level === 0 ? '新建系列' : level === 1 ? '新建品牌' : '新建产品'}
+                      </span>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem
+                    className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(item);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    <span>删除</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )
           }
         />
       </nav>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
+          </DialogHeader>
+          <div className="p-8 flex items-center gap-3">
+            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
+            </div>
+
+            <span className="text-[15px] text-gray-700 font-medium">确定删除吗？</span>
+          </div>
+
+          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3">
+            <Button
+              variant="ghost"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600 h-9 px-6 rounded-[4px]"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              className="bg-[#f05252] hover:bg-[#d94141] text-white h-9 px-6 rounded-[4px]"
+              onClick={handleConfirmDelete}
+            >
+              确定
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
