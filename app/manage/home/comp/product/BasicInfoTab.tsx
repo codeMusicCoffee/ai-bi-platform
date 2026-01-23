@@ -3,9 +3,16 @@
 import ImageUploader from '@/components/ImageUploader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import { pmService } from '@/services/pm';
-import { Edit2, Package, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit2, Package, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import * as z from 'zod';
@@ -36,6 +43,8 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isBigEventModalOpen, setIsBigEventModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [lifecycles, setLifecycles] = useState<any[]>([]);
   const [milestoneMode, setMilestoneMode] = useState<'create' | 'edit'>('create');
@@ -175,15 +184,23 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
     }
   };
 
-  const handleDeleteMilestone = async (id: string) => {
-    if (!confirm('确定删除此大事纪吗？')) return;
+  const handleDeleteClick = (id: string) => {
+    setItemToDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDeleteId) return;
     try {
-      const res = await pmService.deleteMilestone(id);
+      const res = await pmService.deleteMilestone(itemToDeleteId);
       if (res.success) {
         fetchMilestones();
       }
     } catch (error) {
       console.error('Failed to delete milestone:', error);
+    } finally {
+      setDeleteDialogOpen(false);
+      setItemToDeleteId(null);
     }
   };
 
@@ -348,7 +365,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                             <span>编辑</span>
                           </button>
                           <button
-                            onClick={() => handleDeleteMilestone(item.id)}
+                            onClick={() => handleDeleteClick(item.id)}
                             className="text-[#F56C6C] flex items-center gap-1 text-[13px] font-medium cursor-pointer hover:opacity-80 transition-opacity"
                           >
                             <Trash2 size={14} className="stroke-[2.5px]" />
@@ -377,6 +394,37 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
         initialData={milestoneMode === 'edit' ? editingMilestone : undefined}
         lifecycleOptions={lifecycles}
       />
+
+      {/* 删除确认弹窗 */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden rounded-lg">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
+          </DialogHeader>
+          <div className="p-8 flex items-center gap-3 bg-white">
+            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
+            </div>
+            <span className="text-[15px] text-gray-700 font-medium">确定删除吗？</span>
+          </div>
+
+          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3 bg-white">
+            <Button
+              variant="ghost"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600 h-9 px-6 rounded-[4px] cursor-pointer"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              className="bg-[#f05252] hover:bg-[#d94141] text-white h-9 px-6 rounded-[4px] cursor-pointer"
+              onClick={handleConfirmDelete}
+            >
+              确定
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
