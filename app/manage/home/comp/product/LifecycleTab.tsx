@@ -132,8 +132,12 @@ export function LifecycleTab({ productId }: { productId: string }) {
       align: 'left',
       render: () => (
         <div className="flex items-center justify-start gap-4">
-          <button className="text-[#306EFD] text-[13px] hover:opacity-80">编辑</button>
-          <button className="text-[#F56C6C] text-[13px] hover:opacity-80">删除</button>
+          <button className="text-[#306EFD] text-[13px] hover:opacity-80 cursor-pointer">
+            编辑
+          </button>
+          <button className="text-[#F56C6C] text-[13px] hover:opacity-80 cursor-pointer">
+            删除
+          </button>
         </div>
       ),
     },
@@ -341,20 +345,17 @@ export function LifecycleTab({ productId }: { productId: string }) {
                   {isEditingNodeInfo ? (
                     <div className="flex items-center gap-3 animate-in fade-in duration-200">
                       <Button
-                        type="button"
-                        variant="outline"
                         onClick={() => {
                           form.reset();
                           setIsEditingNodeInfo(false);
                         }}
-                        className="h-[32px] px-6 bg-gray-50 border-none text-gray-500 hover:bg-gray-100 cursor-pointer"
+                        type="button"
+                        variant="outline"
+                        className=" border-gray-200 text-gray-600"
                       >
                         取消
                       </Button>
-                      <Button
-                        type="submit"
-                        className="h-[32px] bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[4px] px-8 shadow-sm cursor-pointer"
-                      >
+                      <Button type="submit" className=" text-white  shadow-sm cursor-pointer">
                         确定
                       </Button>
                     </div>
@@ -362,7 +363,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
                     <Button
                       type="button"
                       onClick={() => setIsEditingNodeInfo(true)}
-                      className="h-[32px] px-6 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[4px] shadow-sm flex items-center gap-2 cursor-pointer animate-in fade-in duration-200"
+                      className="  text-white  shadow-sm flex items-center gap-2 cursor-pointer animate-in fade-in duration-200"
                     >
                       <Edit2 size={14} />
                       <span>编辑</span>
@@ -382,9 +383,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
               <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
               <span className="text-[16px] font-bold text-gray-800">节点看板数据配置</span>
             </div>
-            <Button className="h-[32px] px-6 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[4px] shadow-sm cursor-pointer">
-              生成看板
-            </Button>
+            <Button className="text-white  shadow-sm cursor-pointer">生成看板</Button>
           </div>
 
           <div className="flex items-center gap-4">

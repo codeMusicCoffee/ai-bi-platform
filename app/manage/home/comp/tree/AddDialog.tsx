@@ -105,17 +105,14 @@ export function AddDialog({
                 </div>
                 <DialogFooter className="mt-6">
                   <Button
-                    type="button"
-                    variant="outline"
                     onClick={() => onOpenChange(false)}
-                    className="h-9 px-4 rounded-md shadow-none border-gray-200"
+                    type="button"
+                    variant="ghost"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-600"
                   >
                     取消
                   </Button>
-                  <Button
-                    type="submit"
-                    className="h-9 px-6 rounded-md bg-[#306EFD] hover:bg-[#285cd1] text-white shadow-none"
-                  >
+                  <Button type="submit" className="shadow-none">
                     确认
                   </Button>
                 </DialogFooter>

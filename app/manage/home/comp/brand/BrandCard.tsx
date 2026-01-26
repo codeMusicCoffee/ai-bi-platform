@@ -334,13 +334,13 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
                           form.reset(formData);
                           setIsEditing(false);
                         }}
-                        className="h-8 border-gray-200 text-gray-600 hover:bg-gray-50 rounded-[6px] px-4 cursor-pointer"
+                        className=" border-gray-200 text-gray-600 hover:bg-gray-50  cursor-pointer"
                       >
                         取消
                       </Button>
                       <Button
                         type="submit"
-                        className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] px-6 shadow-sm shadow-blue-100 cursor-pointer"
+                        className=" text-white  shadow-sm shadow-blue-100 cursor-pointer"
                       >
                         确定
                       </Button>
@@ -349,7 +349,7 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
                     <Button
                       type="button"
                       onClick={() => setIsEditing(true)}
-                      className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] px-4 shadow-sm shadow-blue-100 flex items-center gap-2 cursor-pointer"
+                      className=" text-white shadow-sm shadow-blue-100 flex items-center gap-2 cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                       <span>编辑</span>
@@ -366,14 +366,14 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
       <Card className="border-none shadow-sm rounded-[12px]">
         <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100 mx-6 px-0 mb-4">
           <div className="flex items-center space-x-2">
-            <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
+            <div className="w-[3px] h-4 rounded-full" />
             <CardTitle className="text-lg font-bold text-gray-800">产品列表</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <Button
-              className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] cursor-pointer"
+              className=" text-white rounded-[6px] cursor-pointer"
               onClick={() => setIsProductModalOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" /> 新增
@@ -413,7 +413,7 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
               取消
             </Button>
             <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white h-9 px-6 rounded-[4px]"
+              className="bg-[#f05252] hover:bg-[#d94141] text-white"
               onClick={handleConfirmDelete}
             >
               确定

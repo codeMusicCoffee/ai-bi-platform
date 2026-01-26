@@ -171,14 +171,15 @@ export function CategoryTree({
 
           <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3">
             <Button
-              variant="ghost"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-600 h-9 px-6 rounded-[4px]"
               onClick={() => setDeleteDialogOpen(false)}
+              type="button"
+              variant="ghost"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600"
             >
               取消
             </Button>
             <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white h-9 px-6 rounded-[4px]"
+              className="bg-[#f05252] hover:bg-[#d94141] text-white"
               onClick={handleConfirmDelete}
             >
               确定

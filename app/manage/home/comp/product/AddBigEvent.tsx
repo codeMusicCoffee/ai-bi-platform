@@ -125,17 +125,15 @@ export function AddBigEvent({
                 {fields}
                 <DialogFooter className="pt-6 flex gap-3 sm:justify-end">
                   <Button
+                    onClick={() => onOpenChange(false)}
                     type="button"
                     variant="ghost"
-                    onClick={() => onOpenChange(false)}
-                    className="h-9 bg-[#f5f7fa] hover:bg-gray-100 text-gray-600 px-6 rounded-[4px] cursor-pointer"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-600"
                   >
                     取消
                   </Button>
-                  <Button
-                    type="submit"
-                    className="h-9 bg-[#306EFD] hover:bg-[#285cd1] text-white px-8 rounded-[4px] shadow-sm shadow-blue-100 cursor-pointer"
-                  >
+
+                  <Button type="submit" className=" text-white  shadow-sm shadow-blue-100">
                     确定
                   </Button>
                 </DialogFooter>

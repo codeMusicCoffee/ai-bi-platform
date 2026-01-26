@@ -43,7 +43,7 @@ export function LifeEmpty({ onCreate, onApplyTemplate }: LifeEmptyProps) {
 
         <Button
           onClick={onCreate}
-          className="h-10 px-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] shadow-lg shadow-blue-100 flex items-center gap-2 cursor-pointer transition-transform relative z-10"
+          className="h-10 px-8  text-white rounded-[6px] shadow-lg shadow-blue-100 flex items-center gap-2 cursor-pointer transition-transform relative z-10"
         >
           <Plus size={18} />
           <span>创建生命周期</span>

@@ -1,6 +1,24 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -34,6 +52,24 @@ export interface SealedTableColumn<T> {
   ellipsis?: boolean;
 }
 
+/**
+ * 分页配置接口
+ */
+export interface SealedTablePagination {
+  /** 当前页码 (1-indexed) */
+  current: number;
+  /** 每页条数 */
+  pageSize: number;
+  /** 总条数 */
+  total: number;
+  /** 页码或分页大小改变回调 */
+  onChange?: (page: number, pageSize: number) => void;
+  /** 每页条数选项 */
+  pageSizeOptions?: number[];
+  /** 页码显示个数，默认为 5 */
+  pagerCount?: number;
+}
+
 interface SealedTableProps<T> {
   /** 列配置数组 */
   columns: SealedTableColumn<T>[];
@@ -55,6 +91,8 @@ interface SealedTableProps<T> {
   onSelectionChange?: (selectedRowKeys: string[]) => void;
   /** 行数据的唯一标识字段 */
   rowKey?: string;
+  /** 分页配置 */
+  pagination?: SealedTablePagination | false;
 }
 
 export function SealedTable<T>({
@@ -68,6 +106,7 @@ export function SealedTable<T>({
   selectedRowKeys,
   onSelectionChange,
   rowKey = 'id',
+  pagination,
 }: SealedTableProps<T>) {
   const isAllSelected = data.length > 0 && selectedRowKeys?.length === data.length;
   const isPartiallySelected =
@@ -206,7 +245,181 @@ export function SealedTable<T>({
             )}
           </TableBody>
         </Table>
+        {pagination && (
+          <div className="flex items-center justify-end gap-4 px-6 py-4 border-t border-[#ebeef5] bg-white">
+            <span className="text-[13px] text-[#909399]">共{pagination.total}条</span>
+            <span className="text-[13px] text-[#909399] mr-2">
+              共{Math.ceil(pagination.total / pagination.pageSize)}页
+            </span>
+
+            {/* Page Size Selector */}
+            <div className="w-24">
+              <Select
+                value={String(pagination.pageSize)}
+                onValueChange={(val) => pagination.onChange?.(1, Number(val))}
+              >
+                <SelectTrigger className="h-8 border-gray-200 text-[13px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(pagination.pageSizeOptions || [10, 20, 50, 100]).map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}/页
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Shadcn Pagination Implementation */}
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent className="gap-2">
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() =>
+                      pagination.current > 1 &&
+                      pagination.onChange?.(pagination.current - 1, pagination.pageSize)
+                    }
+                    className={cn(
+                      'h-8 w-8 p-0 cursor-pointer border border-[#dcdfe6] text-[#606266] hover:bg-[#f5f7fa] hover:text-[#306EFD] transition-colors',
+                      pagination.current <= 1 && 'pointer-events-none opacity-50'
+                    )}
+                  />
+                </PaginationItem>
+
+                {renderPaginationItems(pagination)}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      pagination.current < Math.ceil(pagination.total / pagination.pageSize) &&
+                      pagination.onChange?.(pagination.current + 1, pagination.pageSize)
+                    }
+                    className={cn(
+                      'h-8 w-8 p-0 cursor-pointer border border-[#dcdfe6] text-[#606266] hover:bg-[#f5f7fa] hover:text-[#306EFD] transition-colors',
+                      pagination.current >= Math.ceil(pagination.total / pagination.pageSize) &&
+                        'pointer-events-none opacity-50'
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+
+            {/* Jump to Page */}
+            <div className="flex items-center gap-2 ml-4">
+              <span className="text-[13px] text-[#606266]">到第</span>
+              <Input
+                className="h-8 w-12 text-center p-0 border-[#dcdfe6] focus-visible:ring-1 focus-visible:ring-[#306EFD]"
+                defaultValue={pagination.current}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = Number((e.target as HTMLInputElement).value);
+                    if (val > 0 && val <= Math.ceil(pagination.total / pagination.pageSize)) {
+                      pagination.onChange?.(val, pagination.pageSize);
+                    }
+                  }
+                }}
+              />
+              <span className="text-[13px] text-[#606266]">页</span>
+              <Button
+                onClick={(e) => {
+                  const input = (e.currentTarget.parentElement as HTMLElement).querySelector(
+                    'input'
+                  );
+                  const val = Number(input?.value);
+                  if (val > 0 && val <= Math.ceil(pagination.total / pagination.pageSize)) {
+                    pagination.onChange?.(val, pagination.pageSize);
+                  }
+                }}
+                className="h-8 px-4  text-white rounded-[4px] text-[13px] cursor-pointer"
+              >
+                确定
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </TooltipProvider>
+  );
+}
+
+/**
+ * 渲染分页页码辅助函数
+ */
+function renderPaginationItems(pagination: SealedTablePagination) {
+  const totalPages = Math.ceil(pagination.total / pagination.pageSize);
+  const current = pagination.current;
+  const items = [];
+
+  // 简单的分页逻辑，适应 1 2 3 4 5 6 ... 尾页
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      items.push(renderItem(i, current, pagination));
+    }
+  } else {
+    // 始终显示第一页
+    items.push(renderItem(1, current, pagination));
+
+    if (current > 4) {
+      items.push(
+        <PaginationItem key="start-ellipsis">
+          <PaginationEllipsis className="h-8 w-8" />
+        </PaginationItem>
+      );
+    }
+
+    const start = Math.max(2, current - 2);
+    const end = Math.min(totalPages - 1, current + 2);
+
+    for (let i = start; i <= end; i++) {
+      items.push(renderItem(i, current, pagination));
+    }
+
+    if (current < totalPages - 3) {
+      items.push(
+        <PaginationItem key="end-ellipsis">
+          <PaginationEllipsis className="h-8 w-8" />
+        </PaginationItem>
+      );
+    }
+
+    // 始终显示最后一页或“尾页”文本
+    items.push(
+      <PaginationItem key={totalPages}>
+        <PaginationLink
+          onClick={() => pagination.onChange?.(totalPages, pagination.pageSize)}
+          isActive={current === totalPages}
+          className={cn(
+            'h-8 min-w-[32px] px-2 text-[13px] border border-[#dcdfe6] rounded hover:bg-[#f5f7fa] cursor-pointer transition-colors',
+            current === totalPages
+              ? 'bg-[#306EFD] text-white border-[#306EFD] hover:bg-[#306EFD]'
+              : 'text-[#606266]'
+          )}
+        >
+          {totalPages === current ? totalPages : '尾页'}
+        </PaginationLink>
+      </PaginationItem>
+    );
+  }
+
+  return items;
+}
+
+function renderItem(i: number, current: number, pagination: SealedTablePagination) {
+  return (
+    <PaginationItem key={i}>
+      <PaginationLink
+        onClick={() => pagination.onChange?.(i, pagination.pageSize)}
+        isActive={current === i}
+        className={cn(
+          'h-8 w-8 p-0 text-[13px] border border-[#dcdfe6] rounded hover:bg-[#f5f7fa] cursor-pointer transition-colors',
+          current === i
+            ? 'bg-[#306EFD] text-white border-[#306EFD] hover:bg-[#306EFD]'
+            : 'text-[#606266]'
+        )}
+      >
+        {i}
+      </PaginationLink>
+    </PaginationItem>
   );
 }

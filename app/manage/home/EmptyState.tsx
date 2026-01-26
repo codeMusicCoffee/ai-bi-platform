@@ -61,7 +61,7 @@ export function ProductEmptyState({
       {/* 操作按钮 */}
       <Button
         onClick={onAdd}
-        className="h-11 px-12 rounded-lg bg-[#306EFD] hover:bg-[#285cd1] text-white font-medium shadow-md shadow-blue-100 transition-all active:translate-y-0.5 flex items-center gap-2 text-[15px] cursor-pointer"
+        className="h-11 px-12 rounded-lg  text-white font-medium shadow-md shadow-blue-100 transition-all active:translate-y-0.5 flex items-center gap-2 text-[15px] cursor-pointer"
       >
         <Plus className="h-4.5 w-4.5" />
         新增{type}

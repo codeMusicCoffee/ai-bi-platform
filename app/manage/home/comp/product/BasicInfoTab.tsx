@@ -227,20 +227,17 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                   {isEditing ? (
                     <div className="flex items-center gap-3 animate-in fade-in duration-200">
                       <Button
-                        type="button"
-                        variant="outline"
                         onClick={() => {
                           form.reset(formData);
                           setIsEditing(false);
                         }}
-                        className="h-8 border-gray-200 text-gray-600 rounded-[6px] px-4 cursor-pointer"
+                        type="button"
+                        variant="outline"
+                        className=" border-gray-200 text-gray-600"
                       >
                         取消
                       </Button>
-                      <Button
-                        type="submit"
-                        className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] px-6 shadow-sm shadow-blue-100 cursor-pointer"
-                      >
+                      <Button type="submit" className="  text-white shadow-sm shadow-blue-100">
                         确定
                       </Button>
                     </div>
@@ -248,7 +245,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                     <Button
                       type="button"
                       onClick={() => setIsEditing(true)}
-                      className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] px-4 shadow-sm shadow-blue-100 flex items-center gap-2 cursor-pointer"
+                      className="  text-white   shadow-sm shadow-blue-100 flex items-center gap-2 "
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                       <span>编辑</span>
@@ -260,7 +257,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                 {loading && (
                   <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-2 border-[#306EFD] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8  border-2 border-[#306EFD] border-t-transparent rounded-full animate-spin" />
                       <span className="text-sm text-gray-500">加载中...</span>
                     </div>
                   </div>
@@ -292,7 +289,6 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
             <CardTitle className="text-lg font-bold text-gray-800">产品大事纪</CardTitle>
           </div>
           <Button
-            className="h-8 bg-[#306EFD] hover:bg-[#285cd1] text-white rounded-[6px] cursor-pointer"
             onClick={() => {
               setMilestoneMode('create');
               setEditingMilestone(null);
@@ -359,14 +355,14 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                               setEditingMilestone(item);
                               setIsBigEventModalOpen(true);
                             }}
-                            className="text-[#306EFD] flex items-center gap-1 text-[13px] font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                            className="text-[#306EFD] flex items-center gap-1 text-[13px] font-medium  hover:opacity-80 transition-opacity cursor-pointer"
                           >
                             <Edit2 size={14} className="stroke-[2.5px]" />
                             <span>编辑</span>
                           </button>
                           <button
                             onClick={() => handleDeleteClick(item.id)}
-                            className="text-[#F56C6C] flex items-center gap-1 text-[13px] font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                            className="text-[#F56C6C] flex items-center gap-1 text-[13px] font-medium  hover:opacity-80 transition-opacity cursor-pointer"
                           >
                             <Trash2 size={14} className="stroke-[2.5px]" />
                             <span>删除</span>
@@ -375,7 +371,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                       </div>
 
                       {/* Content Box */}
-                      <div className="bg-[#F5F7FA] p-2 rounded-[6px] text-[13px] text-[#595959] border border-transparent h-[80px] overflow-hidden line-clamp-3">
+                      <div className="bg-[#F5F7FA] p-2  text-[13px] text-[#595959] border border-transparent h-[80px] overflow-hidden line-clamp-3">
                         {item.content || '暂无内容'}
                       </div>
                     </div>
@@ -411,13 +407,13 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
           <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3 bg-white">
             <Button
               variant="ghost"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-600 h-9 px-6 rounded-[4px] cursor-pointer"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600"
               onClick={() => setDeleteDialogOpen(false)}
             >
               取消
             </Button>
             <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white h-9 px-6 rounded-[4px] cursor-pointer"
+              className="bg-[#f05252] hover:bg-[#d94141] text-white"
               onClick={handleConfirmDelete}
             >
               确定

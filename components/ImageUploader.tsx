@@ -18,7 +18,8 @@ interface ImageUploaderProps {
 const ImageUploader: React.FC<ImageUploaderProps> = ({
   value,
   onChange,
-  uploadApi = 'http://192.168.151.246:8000/api/upload',
+  // 新实现 将 uploadApi = 'http://192.168.151.246:8000/api/upload' 改为使用 NEXT_PUBLIC_BACKEND_URL
+  uploadApi = `${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/upload`,
   defaultImage,
   defaultIcon,
   readonly = false,
