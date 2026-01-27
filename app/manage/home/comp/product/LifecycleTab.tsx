@@ -12,13 +12,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
 import {
@@ -45,6 +38,8 @@ import { Edit2, Home, Plus, X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
+import { AddBoard } from './AddBoard';
+import { AddKanbanConfig } from './AddKanbanConfig';
 import { LifeEmpty } from './LifeEmpty';
 
 const nodeInfoSchema = z.object({
@@ -63,11 +58,12 @@ interface LifecycleNode {
 
 interface DashboardItem {
   id: string;
-  dataset: string;
-  name: string;
-  chartType: string;
+  dataset_id: string;
+  dataset_name: string;
+  module_name: string;
+  chart_style: string;
   description: string;
-  metric: number;
+  dataset_fields: string[];
 }
 
 function SortableItem({
@@ -164,7 +160,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
     // No live state update during over to prevent layout shift of arrows
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setDragActiveId(null);
 
@@ -174,11 +170,25 @@ export function LifecycleTab({ productId }: { productId: string }) {
     }, 100);
 
     if (over && active.id !== over.id) {
-      setNodes((items) => {
-        const oldIndex = items.findIndex((i) => i.id === active.id);
-        const newIndex = items.findIndex((i) => i.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      const oldIndex = nodes.findIndex((i) => i.id === active.id);
+      const newIndex = nodes.findIndex((i) => i.id === over.id);
+      const newNodes = arrayMove(nodes, oldIndex, newIndex);
+      setNodes(newNodes);
+
+      // Call reorder API
+      try {
+        await pmService.reorderLifecycles({
+          product_id: productId,
+          items: newNodes.map((node, index) => ({
+            lifecycle_id: node.id,
+            sort_order: index + 1,
+          })),
+        });
+      } catch (error) {
+        console.error('Failed to reorder lifecycles:', error);
+        // Revert on error
+        fetchData();
+      }
     }
   };
 
@@ -224,44 +234,61 @@ export function LifecycleTab({ productId }: { productId: string }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState<string | null>(null);
 
-  const [tableData, setTableData] = useState<DashboardItem[]>([
-    {
-      id: '1',
-      dataset: '数据集名称数据集名称',
-      name: '这是名称',
-      chartType: '柱状图',
-      description: '这是描述内容',
-      metric: 5,
-    },
-    {
-      id: '2',
-      dataset: '数据集名称数据集名称',
-      name: '这是名称这是名称...',
-      chartType: '柱状图',
-      description: '这是描述内...',
-      metric: 3,
-    },
-  ]);
+  const [tableData, setTableData] = useState<DashboardItem[]>([]);
+  const [kanbanLoading, setKanbanLoading] = useState(false);
+
+  const fetchKanbans = useCallback(async (lifecycleId: string) => {
+    try {
+      setKanbanLoading(true);
+      const res = await pmService.getKanbans(lifecycleId);
+      const data = res.data as any;
+      const rawData = Array.isArray(data) ? data : data?.items || data?.list || [];
+      setTableData(
+        rawData.map((item: any) => ({
+          id: item.id,
+          dataset_id: item.dataset_id,
+          dataset_name: item.dataset_name || '数据集',
+          module_name: item.module_name,
+          chart_style: item.chart_style,
+          description: item.description,
+          dataset_fields: item.dataset_fields || [],
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to fetch kanbans:', error);
+    } finally {
+      setKanbanLoading(false);
+    }
+  }, []);
 
   const columns: SealedTableColumn<DashboardItem>[] = [
     {
       title: '数据集',
-      dataIndex: 'dataset',
+      dataIndex: 'dataset_name',
     },
-    { title: '名称', dataIndex: 'name', ellipsis: true },
-    { title: '图表形式', dataIndex: 'chartType' },
+    { title: '模块名称', dataIndex: 'module_name', ellipsis: true },
+    {
+      title: '图表形式',
+      dataIndex: 'chart_style',
+      render: (val) => (val === 'chart-bar' ? '柱状图' : val === 'chart-line' ? '折线图' : '饼图'),
+    },
     { title: '描述', dataIndex: 'description', ellipsis: true },
-    { title: '关注指标', dataIndex: 'metric', align: 'center' },
     {
       title: '操作',
       key: 'action',
       align: 'left',
-      render: () => (
+      render: (_, record) => (
         <div className="flex items-center justify-start gap-4">
-          <button className="text-[#306EFD] text-[13px] hover:opacity-80 cursor-pointer">
+          <button
+            onClick={() => handleEditKanban(record)}
+            className="text-[#306EFD] text-[13px] hover:opacity-80 cursor-pointer"
+          >
             编辑
           </button>
-          <button className="text-[#F56C6C] text-[13px] hover:opacity-80 cursor-pointer">
+          <button
+            onClick={() => handleDeleteKanban(record.id)}
+            className="text-[#F56C6C] text-[13px] hover:opacity-80 cursor-pointer"
+          >
             删除
           </button>
         </div>
@@ -270,6 +297,16 @@ export function LifecycleTab({ productId }: { productId: string }) {
   ];
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [isKanbanConfigOpen, setIsKanbanConfigOpen] = useState(false);
+  const [kanbanMode, setKanbanMode] = useState<'create' | 'edit'>('create');
+  const [currentKanban, setCurrentKanban] = useState<DashboardItem | null>(null);
+  const [isAddBoardOpen, setIsAddBoardOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeNodeId) {
+      fetchKanbans(activeNodeId);
+    }
+  }, [activeNodeId, fetchKanbans]);
 
   const activeNode = nodes.find((n) => n.id === activeNodeId) || nodes[0];
 
@@ -340,6 +377,49 @@ export function LifecycleTab({ productId }: { productId: string }) {
     }
   };
 
+  const handleEditKanban = (kanban: DashboardItem) => {
+    setKanbanMode('edit');
+    setCurrentKanban(kanban);
+    setIsKanbanConfigOpen(true);
+  };
+
+  const handleDeleteKanban = async (id: string) => {
+    try {
+      await pmService.deleteKanban(id);
+      if (activeNodeId) {
+        fetchKanbans(activeNodeId);
+      }
+    } catch (error) {
+      console.error('Failed to delete kanban:', error);
+    }
+  };
+
+  const handleKanbanConfirm = async (values: any) => {
+    console.log('--- Kanban Confirm Triggered ---', { activeNodeId, kanbanMode, values });
+    if (!activeNodeId) {
+      toast.error('当前没有选中的节点，无法保存看板');
+      return;
+    }
+    try {
+      if (kanbanMode === 'create') {
+        const createData = {
+          lifecycle_id: activeNodeId,
+          ...values,
+        };
+        console.log('Creating Kanban with data:', createData);
+        await pmService.createKanban(createData);
+      } else if (currentKanban) {
+        console.log('Updating Kanban ID:', currentKanban.id, 'with data:', values);
+        await pmService.updateKanban(currentKanban.id, values);
+      }
+      fetchKanbans(activeNodeId);
+      setIsKanbanConfigOpen(false);
+    } catch (error: any) {
+      console.error('Failed to save kanban:', error);
+      toast.error('保存看板失败: ' + (error.message || '未知错误'));
+    }
+  };
+
   const handleApplyTemplate = async (name: string) => {
     const steps = ['研发', '试销', '生产', '上市', '退市'];
     for (const step of steps) {
@@ -350,6 +430,18 @@ export function LifecycleTab({ productId }: { productId: string }) {
       });
     }
     fetchData();
+  };
+
+  const handleGenerateBoard = () => {
+    if (tableData.length === 0) {
+      toast.error('暂无数据，请先增加看板配置');
+      return;
+    }
+    if (selectedRowKeys.length === 0) {
+      toast.error('请勾选数据集模块');
+      return;
+    }
+    setIsAddBoardOpen(true);
   };
 
   if (loading && !initialFetchDone) {
@@ -519,24 +611,25 @@ export function LifecycleTab({ productId }: { productId: string }) {
               <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
               <span className="text-[16px] font-bold text-gray-800">节点看板数据配置</span>
             </div>
-            <Button className="text-white  shadow-sm cursor-pointer">生成看板</Button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="text-[14px] text-gray-600 whitespace-nowrap">
-              <span className="text-red-500 font-bold">*</span> 数据集:
-            </label>
-            <div className="w-64">
-              <Select>
-                <SelectTrigger className="h-8 bg-white border-gray-100">
-                  <SelectValue placeholder="选择数据集" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ds1">数据集 A</SelectItem>
-                  <SelectItem value="ds2">数据集 B</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                setKanbanMode('create');
+                setCurrentKanban(null);
+                setIsKanbanConfigOpen(true);
+              }}
+            >
+              看板配置
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleGenerateBoard}
+              className="border-[#306EFD] text-[#306EFD] hover:bg-blue-50 hover:text-[#306EFD]"
+            >
+              生成看板
+            </Button>
           </div>
 
           <SealedTable
@@ -578,6 +671,22 @@ export function LifecycleTab({ productId }: { productId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Kanban Configuration Dialog */}
+      <AddKanbanConfig
+        open={isKanbanConfigOpen}
+        onOpenChange={setIsKanbanConfigOpen}
+        mode={kanbanMode}
+        initialData={currentKanban}
+        onConfirm={handleKanbanConfirm}
+      />
+
+      {/* Add Board Dialog */}
+      <AddBoard
+        open={isAddBoardOpen}
+        onOpenChange={setIsAddBoardOpen}
+        productId={productId}
+      />
     </Card>
   );
 }

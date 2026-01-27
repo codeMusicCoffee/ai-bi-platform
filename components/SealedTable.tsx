@@ -93,6 +93,10 @@ interface SealedTableProps<T> {
   rowKey?: string;
   /** 分页配置 */
   pagination?: SealedTablePagination | false;
+  /** 给 Table 所在的 div 容器添加类名（用于固定表头滚动） */
+  containerClassName?: string;
+  /** 是否正在加载 */
+  loading?: boolean;
 }
 
 export function SealedTable<T>({
@@ -107,6 +111,8 @@ export function SealedTable<T>({
   onSelectionChange,
   rowKey = 'id',
   pagination,
+  containerClassName,
+  loading = false,
 }: SealedTableProps<T>) {
   const isAllSelected = data.length > 0 && selectedRowKeys?.length === data.length;
   const isPartiallySelected =
@@ -137,11 +143,11 @@ export function SealedTable<T>({
           className
         )}
       >
-        <Table className="border-collapse">
-          <TableHeader className={cn('bg-[#f5f7fa]', headerClassName)}>
-            <TableRow className="hover:bg-transparent border-b border-[#ebeef5]">
+        <Table className="border-separate border-spacing-0" containerClassName={containerClassName}>
+          <TableHeader className={cn('bg-[#f8f9fb]', headerClassName)}>
+            <TableRow className="hover:bg-transparent bg-[#f8f9fb] h-10">
               {onSelectionChange && (
-                <TableHead className="w-[50px] px-4 py-0 text-center align-middle">
+                <TableHead className="w-[50px] px-2 py-0 text-center align-middle sticky top-0 z-10 bg-[#f8f9fb] border-b border-[#ebeef5] h-10 bg-clip-padding">
                   <Checkbox
                     checked={isAllSelected || (isPartiallySelected ? 'indeterminate' : false)}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
@@ -156,7 +162,7 @@ export function SealedTable<T>({
                     textAlign: col.align || 'left',
                   }}
                   className={cn(
-                    'h-12 px-4 py-0 text-[14px] font-bold text-[#202224] align-middle',
+                    'h-10 px-2 py-0 text-[14px] font-bold text-[#202224] align-middle sticky top-0 z-10 bg-[#f8f9fb] border-b border-[#ebeef5] bg-clip-padding',
                     col.align === 'center'
                       ? 'text-center'
                       : col.align === 'right'
@@ -170,20 +176,32 @@ export function SealedTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data && data.length > 0 ? (
+            {loading ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={onSelectionChange ? columns.length + 1 : columns.length}
+                  className="h-[300px] text-center border-none"
+                >
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <div className="w-8 h-8 border-2 border-blue-50 border-t-[#306EFD] rounded-full animate-spin" />
+                    <span className="text-[#909399] text-[13px]">数据加载中...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : data && data.length > 0 ? (
               data.map((record, rowIndex) => (
                 <TableRow
                   key={rowIndex}
                   onClick={() => onRowClick?.(record, rowIndex)}
                   className={cn(
-                    'border-b border-[#ebeef5] transition-colors hover:bg-[#f5f7fa] group last:border-0',
+                    'transition-colors hover:bg-[#f5f7fa] group',
                     stripe && rowIndex % 2 === 1 && 'bg-[#fafafa]',
                     onRowClick && 'cursor-pointer',
                     rowClassName
                   )}
                 >
                   {onSelectionChange && (
-                    <TableCell className="w-[50px] px-4 py-0 text-center align-middle">
+                    <TableCell className="w-[50px] px-2 py-0 text-center align-middle border-b border-[#ebeef5] group-last:border-0">
                       <Checkbox
                         checked={selectedRowKeys?.includes(String((record as any)[rowKey]))}
                         onCheckedChange={(checked) => handleSelectRow(record, !!checked)}
@@ -200,7 +218,7 @@ export function SealedTable<T>({
                           textAlign: col.align || 'left',
                         }}
                         className={cn(
-                          'h-12 px-4 py-0 text-[14px] text-[#202224] align-middle',
+                          'h-10 px-2 py-0 text-[14px] text-[#202224] align-middle border-b border-[#ebeef5] group-last:border-0',
                           col.align === 'center'
                             ? 'text-center'
                             : col.align === 'right'
@@ -209,20 +227,22 @@ export function SealedTable<T>({
                         )}
                       >
                         {col.ellipsis ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="truncate w-full cursor-default">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="truncate w-full cursor-default">
+                                  {col.render
+                                    ? col.render(value, record, rowIndex)
+                                    : (value as React.ReactNode)}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[300px] break-all">
                                 {col.render
                                   ? col.render(value, record, rowIndex)
                                   : (value as React.ReactNode)}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[300px] break-all">
-                              {col.render
-                                ? col.render(value, record, rowIndex)
-                                : (value as React.ReactNode)}
-                            </TooltipContent>
-                          </Tooltip>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : col.render ? (
                           col.render(value, record, rowIndex)
                         ) : (
@@ -234,12 +254,15 @@ export function SealedTable<T>({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent border-none">
                 <TableCell
                   colSpan={onSelectionChange ? columns.length + 1 : columns.length}
-                  className="h-40 text-center text-[#909399] text-[14px]"
+                  className="h-[146px] text-center border-none"
                 >
-                  暂无数据
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <img src="/images/empty.svg" alt="暂无数据" className="w-[88px] h-[88px]" />
+                    <span className="text-[#9EABC2] text-[14px]">暂无数据</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

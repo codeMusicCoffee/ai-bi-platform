@@ -66,7 +66,7 @@ export function AddDialog({
           {parentName && (
             <div className="grid gap-2 mb-4">
               <label className="text-[13px] font-medium text-gray-400">
-                {type === '系列' ? '所属品类' : type === '品牌' ? '所属系列' : '所属品牌'}
+                {type === '系列' ? '品类名称' : type === '品牌' ? '系列名称' : '品牌名称'}
               </label>
               <Input
                 value={parentName}

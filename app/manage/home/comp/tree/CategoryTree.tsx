@@ -107,7 +107,7 @@ export function CategoryTree({
             return <img src={iconPath} alt={`level-${level}`} className="w-4 h-4 shrink-0" />;
           }}
           renderActions={({ item, level, parentItem }) =>
-            level < 4 && (
+            level < 3 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 transition-colors">

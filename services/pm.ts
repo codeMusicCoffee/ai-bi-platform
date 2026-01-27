@@ -85,6 +85,10 @@ export const pmService = {
     request.put<string>(`/api/pm/lifecycles/${id}`, data, { showSuccessMsg: true }),
   deleteLifecycle: (id: string) =>
     request.delete(`/api/pm/lifecycles/${id}`, {}, { showSuccessMsg: true }),
+  reorderLifecycles: (data: {
+    product_id: string;
+    items: { lifecycle_id: string; sort_order: number }[];
+  }) => request.put<any>('/api/pm/lifecycles/actions/reorder', data),
 
   // Milestones
   getMilestones: (productId: string) =>
@@ -95,4 +99,27 @@ export const pmService = {
     request.put<any>(`/api/pm/milestones/${id}`, data, { showSuccessMsg: true }),
   deleteMilestone: (id: string) =>
     request.delete(`/api/pm/milestones/${id}`, {}, { showSuccessMsg: true }),
+
+  // Kanbans
+  getKanbans: (lifecycleId: string) =>
+    request.get<any[]>(`/api/pm/kanbans`, { lifecycle_id: lifecycleId }),
+  createKanban: (data: {
+    lifecycle_id: string;
+    dataset_id: string;
+    module_name: string;
+    chart_style: string;
+    description: string;
+    dataset_fields: string[];
+  }) => request.post<any>('/api/pm/kanbans', data, { showSuccessMsg: true }),
+  updateKanban: (
+    id: string,
+    data: {
+      module_name?: string;
+      chart_style?: string;
+      description?: string;
+      dataset_fields?: string[];
+    }
+  ) => request.put<any>(`/api/pm/kanbans/${id}`, data, { showSuccessMsg: true }),
+  deleteKanban: (id: string) =>
+    request.delete(`/api/pm/kanbans/${id}`, {}, { showSuccessMsg: true }),
 };
