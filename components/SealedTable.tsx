@@ -306,10 +306,11 @@ export function SealedTable<T>({
             </Pagination>
 
             {/* Jump to Page */}
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2 ml-2">
               <span className="text-[13px] text-[#606266]">到第</span>
               <Input
-                className="h-8 w-12 text-center p-0 border-[#dcdfe6] focus-visible:ring-1 focus-visible:ring-[#306EFD]"
+                type="number"
+                className="h-8 w-14 text-center p-0 border-[#dcdfe6] focus-visible:ring-1 focus-visible:ring-[#306EFD] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 defaultValue={pagination.current}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -322,6 +323,7 @@ export function SealedTable<T>({
               />
               <span className="text-[13px] text-[#606266]">页</span>
               <Button
+                variant="outline"
                 onClick={(e) => {
                   const input = (e.currentTarget.parentElement as HTMLElement).querySelector(
                     'input'
@@ -331,7 +333,7 @@ export function SealedTable<T>({
                     pagination.onChange?.(val, pagination.pageSize);
                   }
                 }}
-                className="h-8 px-4  text-white rounded-[4px] text-[13px] cursor-pointer"
+                className="h-8 px-3 border-[#dcdfe6] text-[#606266] hover:bg-[#f5f7fa] hover:text-[#306EFD] text-[13px] cursor-pointer ml-1"
               >
                 确定
               </Button>

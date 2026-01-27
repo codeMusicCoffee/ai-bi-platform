@@ -21,8 +21,28 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Edit2, Home, Plus, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
 import { LifeEmpty } from './LifeEmpty';
@@ -50,11 +70,117 @@ interface DashboardItem {
   metric: number;
 }
 
+function SortableItem({
+  node,
+  activeNodeId,
+  onNodeClick,
+  onOpenDelete,
+}: {
+  node: LifecycleNode;
+  activeNodeId: string | null;
+  onNodeClick: (id: string) => void;
+  onOpenDelete: (e: React.MouseEvent, id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: node.id,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'group relative flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-[10px] shadow-sm min-w-[140px] cursor-pointer touch-none transition-all',
+        node.id === activeNodeId
+          ? 'border-[#306EFD] ring-4 ring-blue-50/50'
+          : 'border-transparent hover:border-gray-100',
+        isDragging && 'opacity-0'
+      )}
+      onClick={() => onNodeClick(node.id)}
+    >
+      <div
+        className={cn(
+          'w-7 h-7 rounded-lg flex items-center justify-center',
+          node.id === activeNodeId ? 'bg-[#306EFD] text-white' : 'bg-[#f5f7fa] text-[#306EFD]'
+        )}
+      >
+        <Home size={16} />
+      </div>
+      <span
+        className={cn(
+          'font-bold text-[14px] select-none',
+          node.id === activeNodeId ? 'text-[#262626]' : 'text-[#595959]'
+        )}
+      >
+        {node.name}
+      </span>
+
+      <button
+        className={cn(
+          'ml-auto text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100',
+          node.id === activeNodeId && 'opacity-100'
+        )}
+        onClick={(e) => onOpenDelete(e, node.id)}
+      >
+        <X size={14} className="rounded-full bg-gray-100 p-0.5" />
+      </button>
+    </div>
+  );
+}
+
 export function LifecycleTab({ productId }: { productId: string }) {
   const [nodes, setNodes] = useState<LifecycleNode[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  const isDragOccurred = React.useRef(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 2, // Minimal distance for immediate response
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    isDragOccurred.current = true;
+    setDragActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    // No live state update during over to prevent layout shift of arrows
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDragActiveId(null);
+
+    // Give a small delay to allow onClick to be suppressed if it was a drag
+    setTimeout(() => {
+      isDragOccurred.current = false;
+    }, 100);
+
+    if (over && active.id !== over.id) {
+      setNodes((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!productId) return;
@@ -172,6 +298,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
   };
 
   const handleNodeClick = (id: string) => {
+    if (isDragOccurred.current) return;
     setActiveNodeId(id);
   };
 
@@ -243,30 +370,71 @@ export function LifecycleTab({ productId }: { productId: string }) {
       <CardContent className="p-0">
         {/* 1. 节点流程可视化区域 - 压缩高度 */}
         <div
-          className="relative py-6 bg-white/50 border-b border-gray-100 flex items-center justify-center overflow-hidden m-4"
+          className="relative bg-white/50 border-b border-gray-100 flex items-center justify-center overflow-hidden m-4"
           style={{
             backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)',
             backgroundSize: '10px 10px',
           }}
         >
-          <div className="w-full overflow-x-auto overflow-y-visible px-8 pb-4 custom-scrollbar">
-            <div className="flex items-center flex-nowrap justify-start lg:justify-center min-w-max mx-auto gap-0">
-              {nodes.map((node, index) => (
-                <div key={node.id} className="flex items-center">
-                  {/* Node Item */}
+          <div className="w-full overflow-x-auto overflow-y-hidden px-8 py-10 custom-scrollbar">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex items-center flex-nowrap justify-start lg:justify-center min-w-max mx-auto gap-0">
+                <SortableContext items={nodes} strategy={horizontalListSortingStrategy}>
+                  {nodes.map((node, index) => (
+                    <React.Fragment key={node.id}>
+                      <SortableItem
+                        node={node}
+                        activeNodeId={activeNodeId}
+                        onNodeClick={handleNodeClick}
+                        onOpenDelete={handleOpenDelete}
+                      />
+
+                      {/* Arrow between nodes - rendered outside sortable item */}
+                      {index < nodes.length - 1 && (
+                        <div className="px-4 flex items-center shrink-0">
+                          <img
+                            src="/images/manage/product/arrow_line.svg"
+                            alt="arrow"
+                            width={170}
+                            height={12}
+                            className="pointer-events-none select-none"
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </SortableContext>
+
+                {/* Add Button */}
+                <div className="ml-1">
+                  <button
+                    className="w-4 h-4 rounded-full border border-[#306EFD] text-[#306EFD] flex items-center justify-center hover:bg-blue-50 transition-colors cursor-pointer"
+                    onClick={handleCreate}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <DragOverlay adjustScale={false}>
+                {dragActiveId ? (
                   <div
                     className={cn(
-                      'group relative flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-[10px] shadow-sm transition-all min-w-[140px] cursor-pointer',
-                      node.id === activeNodeId
+                      'flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-[10px] shadow-xl min-w-[140px] cursor-grabbing',
+                      dragActiveId === activeNodeId
                         ? 'border-[#306EFD] ring-4 ring-blue-50/50'
-                        : 'border-transparent hover:border-gray-100'
+                        : 'border-gray-200'
                     )}
-                    onClick={() => handleNodeClick(node.id)}
                   >
                     <div
                       className={cn(
                         'w-7 h-7 rounded-lg flex items-center justify-center',
-                        node.id === activeNodeId
+                        dragActiveId === activeNodeId
                           ? 'bg-[#306EFD] text-white'
                           : 'bg-[#f5f7fa] text-[#306EFD]'
                       )}
@@ -276,48 +444,16 @@ export function LifecycleTab({ productId }: { productId: string }) {
                     <span
                       className={cn(
                         'font-bold text-[14px]',
-                        node.id === activeNodeId ? 'text-[#262626]' : 'text-[#595959]'
+                        dragActiveId === activeNodeId ? 'text-[#262626]' : 'text-[#595959]'
                       )}
                     >
-                      {node.name}
+                      {nodes.find((n) => n.id === dragActiveId)?.name}
                     </span>
-
-                    <button
-                      className={cn(
-                        'ml-auto text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100',
-                        node.id === activeNodeId && 'opacity-100'
-                      )}
-                      onClick={(e) => handleOpenDelete(e, node.id)}
-                    >
-                      <X size={14} className="rounded-full bg-gray-100 p-0.5" />
-                    </button>
+                    <X size={14} className="ml-auto text-gray-300 rounded-full bg-gray-100 p-0.5" />
                   </div>
-
-                  {/* Arrow between nodes */}
-                  {index < nodes.length - 1 && (
-                    <div className="px-4 flex items-center">
-                      {/* 新实现：将内联 SVG 替换为图片资源 */}
-                      <img
-                        src="/images/manage/product/arrow_line.svg"
-                        alt="arrow"
-                        width={170}
-                        height={12}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Add Button */}
-              <div className="ml-1">
-                <button
-                  className="w-4 h-4 rounded-full border border-[#306EFD] text-[#306EFD] flex items-center justify-center hover:bg-blue-50 transition-colors cursor-pointer"
-                  onClick={handleCreate}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
         </div>
 
