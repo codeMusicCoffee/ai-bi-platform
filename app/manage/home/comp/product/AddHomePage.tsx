@@ -1,7 +1,7 @@
 'use client';
 
+import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { pmService } from '@/services/pm';
+import { Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface ChartItem {
   id: string;
@@ -32,9 +36,7 @@ interface ChartItem {
 interface NodeGroup {
   id: string;
   name: string;
-  expanded: boolean;
-  selected: boolean;
-  items: ChartItem[];
+  items?: ChartItem[];
 }
 
 interface AddHomePageProps {
@@ -44,225 +46,291 @@ interface AddHomePageProps {
 }
 
 export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps) {
-  const [nodes, setNodes] = useState<NodeGroup[]>([
-    {
-      id: 'node-1',
-      name: '节点1',
-      expanded: true,
-      selected: true,
-      items: [
-        {
-          id: 'item-1-1',
-          dataset: '数据集名称数据集名称',
-          name: '这是名称这是名称...',
-          chartType: '柱状图',
-          description: '这是描述内...',
-          metric: 3,
-        },
-        {
-          id: 'item-1-2',
-          dataset: '数据集名称数据集名称',
-          name: '',
-          chartType: '',
-          description: '',
-          metric: 4,
-        },
-      ],
-    },
-    {
-      id: 'node-2',
-      name: '节点2',
-      expanded: true,
-      selected: true,
-      items: [
-        {
-          id: 'item-2-1',
-          dataset: '数据集名称数据集名称',
-          name: '这是名称这是名称...',
-          chartType: '柱状图',
-          description: '这是描述内...',
-          metric: 3,
-        },
-        {
-          id: 'item-2-2',
-          dataset: '数据集名称数据集名称',
-          name: '这是名称这是名称...',
-          chartType: '柱状图',
-          description: '这是描述内...',
-          metric: 4,
-        },
-      ],
-    },
-    {
-      id: 'node-3',
-      name: '节点3',
-      expanded: false,
-      selected: true,
-      items: [],
-    },
-    {
-      id: 'node-4',
-      name: '节点4',
-      expanded: false,
-      selected: false,
-      items: [],
-    },
-    {
-      id: 'node-5',
-      name: '节点5',
-      expanded: false,
-      selected: false,
-      items: [],
-    },
-  ]);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [styleDescription, setStyleDescription] = useState('');
+  const [otherDescription, setOtherDescription] = useState('');
 
-  const toggleExpand = (nodeId: string) => {
-    setNodes((prev) =>
-      prev.map((node) => (node.id === nodeId ? { ...node, expanded: !node.expanded } : node))
-    );
+  const [nodes, setNodes] = useState<NodeGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (open && productId) {
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          const res = await pmService.getLifecycleKanbanTree(productId);
+          if (res?.data?.items) {
+            const mappedNodes: NodeGroup[] = res.data.items.map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              items: (item.kanbans || []).map((kb: any) => ({
+                id: kb.id,
+                dataset: kb.dataset_id, // 暂用 dataset_id，如果有 dataset_name 可替换
+                name: kb.module_name,
+                chartType: kb.chart_style,
+                description: kb.description || '',
+                metric: kb.dataset_fields?.length || 0,
+              })),
+            }));
+            setNodes(mappedNodes);
+            // 默认展开所有节点
+            setExpandedRowKeys(mappedNodes.map((n) => n.id));
+          }
+        } catch (error) {
+          console.error('Failed to fetch lifecycle kanban tree:', error);
+          toast.error('获取列表数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    }
+  }, [open, productId]);
+
+  const handleNext = () => {
+    if (selectedRowKeys.length === 0) {
+      toast.warning('先勾选看板模块');
+      return;
+    }
+    setStep(2);
+  };
+
+  const handlePrev = () => {
+    setStep(1);
   };
 
   const handleConfirm = () => {
     // Logic for confirmed generation
+    console.log('Generated with:', {
+      selectedKeys: selectedRowKeys,
+      styleDescription,
+      otherDescription,
+    });
     onOpenChange(false);
+    setStep(1);
   };
 
+  const handleClose = () => {
+    onOpenChange(false);
+    setStep(1);
+  };
+
+  const columns: SealedTableColumn<any>[] = [
+    {
+      title: '名称',
+      key: 'name_display',
+      width: '180px',
+      render: (_, record) => {
+        // 如果有 items 说明是节点行，否则是子项
+        return <span className="font-medium">{record.items ? record.name : record.dataset}</span>;
+      },
+    },
+    {
+      title: '名称',
+      key: 'input_name',
+      render: (_, record) => {
+        if (record.items) return null; // 节点行不显示表单
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-red-500">*</span>
+            {record.name ? (
+              <span className="text-gray-600 px-1">{record.name}</span>
+            ) : (
+              <Input
+                placeholder="请输入"
+                className="h-8 text-[13px] border-gray-200 focus:border-primary"
+              />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: '图表形式',
+      key: 'chart_style',
+      width: '140px',
+      render: (_, record) => {
+        if (record.items) return null;
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-red-500">*</span>
+            {record.chartType ? (
+              <span className="text-gray-600 px-1">{record.chartType}</span>
+            ) : (
+              <Select>
+                <SelectTrigger className="h-8 text-[13px] border-gray-200">
+                  <SelectValue placeholder="请选择" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bar">柱状图</SelectItem>
+                  <SelectItem value="line">折线图</SelectItem>
+                  <SelectItem value="pie">饼图</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: '描述',
+      key: 'description',
+      render: (_, record) => {
+        if (record.items) return null;
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-red-500">*</span>
+            {record.description ? (
+              <span className="text-gray-600 px-1 truncate">{record.description}</span>
+            ) : (
+              <Input
+                placeholder="请输入"
+                className="h-8 text-[13px] border-gray-200 focus:border-primary"
+              />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: '关注指标',
+      dataIndex: 'metric',
+      align: 'center',
+      width: '100px',
+      render: (val, record) => (record.items ? null : val),
+    },
+  ];
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1000px] p-0 overflow-hidden border-none rounded-[12px]">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-[1020px] p-0 overflow-hidden border-none rounded-[12px]">
         <DialogHeader className="px-6 py-4 flex flex-row items-center justify-between border-b border-gray-100">
           <DialogTitle className="text-[16px] font-bold text-gray-800">生成首页</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-          {/* Table Header */}
-          <div className="grid grid-cols-[50px_1.5fr_1.5fr_1.2fr_1.8fr_1fr] bg-[#F8F9FB] px-4 py-3 border-b border-gray-100 sticky top-0 z-10">
-            <div className="flex items-center justify-center">
-              <Checkbox className="border-gray-200" />
-            </div>
-            <div className="text-[14px] font-bold text-gray-800 px-2">名称</div>
-            <div className="text-[14px] font-bold text-gray-800 px-2">
-              <span className="text-red-500 mr-1">*</span>名称
-            </div>
-            <div className="text-[14px] font-bold text-gray-800 px-2">
-              <span className="text-red-500 mr-1">*</span>图表形式
-            </div>
-            <div className="text-[14px] font-bold text-gray-800 px-2">
-              <span className="text-red-500 mr-1">*</span>描述
-            </div>
-            <div className="text-[14px] font-bold text-gray-800 px-2 text-center">关注指标</div>
-          </div>
-
-          {/* Table Content */}
-          <div className="divide-y divide-gray-50">
-            {nodes.map((node) => (
-              <div key={node.id} className="flex flex-col">
-                {/* Node Row */}
-                <div className="grid grid-cols-[50px_1fr] hover:bg-gray-50/50 transition-colors py-3 px-4">
-                  <div className="flex items-center justify-center">
-                    <Checkbox
-                      checked={node.selected}
-                      onCheckedChange={(val) => {
-                        setNodes((prev) =>
-                          prev.map((n) => (n.id === node.id ? { ...n, selected: !!val } : n))
-                        );
-                      }}
-                      className="border-gray-200"
-                    />
-                  </div>
-                  <div
-                    className="flex items-center gap-2 cursor-pointer select-none"
-                    onClick={() => toggleExpand(node.id)}
-                  >
-                    {node.expanded ? (
-                      <ChevronDown size={16} className="text-gray-400" />
-                    ) : (
-                      <ChevronRight size={16} className="text-gray-400" />
-                    )}
-                    <span className="text-[14px] text-gray-800 font-medium">{node.name}</span>
-                  </div>
-                </div>
-
-                {/* Items Group */}
-                {node.expanded && node.items.length > 0 && (
-                  <div className="bg-white">
-                    {node.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid grid-cols-[50px_1.5fr_1.5fr_1.2fr_1.8fr_1fr] px-4 py-3 border-t border-gray-50"
-                      >
-                        <div className="flex items-center justify-center">
-                          <Checkbox checked={node.selected} className="border-gray-200" />
-                        </div>
-                        <div className="px-2 text-[13px] text-gray-600 flex items-center truncate">
-                          {item.dataset}
-                        </div>
-                        <div className="px-2">
-                          {item.name ? (
-                            <div className="text-[13px] text-gray-600 truncate flex items-center h-8">
-                              {item.name}
-                            </div>
-                          ) : (
-                            <Input
-                              placeholder="请输入"
-                              className="h-8 text-[13px] border-gray-200 focus:border-primary"
-                            />
-                          )}
-                        </div>
-                        <div className="px-2">
-                          {item.chartType ? (
-                            <div className="text-[13px] text-gray-600 truncate flex items-center h-8">
-                              {item.chartType}
-                            </div>
-                          ) : (
-                            <Select>
-                              <SelectTrigger className="h-8 text-[13px] border-gray-200 focus:border-primary">
-                                <SelectValue placeholder="请选择" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="bar">柱状图</SelectItem>
-                                <SelectItem value="line">折线图</SelectItem>
-                                <SelectItem value="pie">饼图</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <div className="px-2">
-                          {item.description ? (
-                            <div className="text-[13px] text-gray-600 truncate flex items-center h-8">
-                              {item.description}
-                            </div>
-                          ) : (
-                            <Input
-                              placeholder="请输入"
-                              className="h-8 text-[13px] border-gray-200 focus:border-primary"
-                            />
-                          )}
-                        </div>
-                        <div className="px-2 text-[13px] text-gray-600 flex items-center justify-center">
-                          {item.metric}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+        {/* Steps Indicator */}
+        <div className="flex items-center justify-center py-6 bg-[#F8F9FB]">
+          <div className="flex items-center gap-0">
+            {/* Step 1 */}
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-medium',
+                  step >= 1 ? 'bg-[#306EFD] text-white' : 'bg-gray-200 text-gray-500'
                 )}
+              >
+                {step === 2 ? <Check size={14} /> : '1'}
               </div>
-            ))}
+              <span
+                className={cn(
+                  'text-[14px] font-medium',
+                  step >= 1 ? 'text-[#306EFD]' : 'text-gray-400'
+                )}
+              >
+                数据配置
+              </span>
+            </div>
+
+            {/* Connector Line */}
+            <div className="w-40 h-[2px] bg-gray-200 mx-4" />
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-medium',
+                  step === 2 ? 'bg-[#306EFD] text-white' : 'bg-gray-200 text-gray-500'
+                )}
+              >
+                2
+              </div>
+              <span
+                className={cn(
+                  'text-[14px] font-medium',
+                  step === 2 ? 'text-[#306EFD]' : 'text-gray-400'
+                )}
+              >
+                风格描述
+              </span>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 bg-[#F8F9FB] gap-3">
+        {/* Content Area */}
+        <div className="min-h-[400px]">
+          {step === 1 ? (
+            <div className="p-4">
+              <SealedTable
+                columns={columns}
+                data={nodes}
+                loading={loading}
+                childrenColumnName="items"
+                expandedRowKeys={expandedRowKeys}
+                onExpand={(expanded, record) => {
+                  setExpandedRowKeys((prev: string[]) =>
+                    expanded ? [...prev, record.id] : prev.filter((k: string) => k !== record.id)
+                  );
+                }}
+                selectedRowKeys={selectedRowKeys}
+                onSelectionChange={setSelectedRowKeys}
+                containerClassName="max-h-[450px]"
+                stripe
+              />
+            </div>
+          ) : (
+            <div className="px-8 py-6 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[14px] font-medium text-gray-700">风格描述：</label>
+                <Textarea
+                  value={styleDescription}
+                  onChange={(e) => setStyleDescription(e.target.value)}
+                  placeholder="请输入"
+                  className="min-h-[140px] resize-none border-gray-200 focus:border-primary text-[14px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[14px] font-medium text-gray-700">其他描述：</label>
+                <Textarea
+                  value={otherDescription}
+                  onChange={(e) => setOtherDescription(e.target.value)}
+                  placeholder="请输入"
+                  className="min-h-[140px] resize-none border-gray-200 focus:border-primary text-[14px]"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="px-6 py-4 bg-white border-t border-gray-100 gap-3">
           <Button
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             type="button"
-            variant="ghost"
-            className="bg-gray-100 hover:bg-gray-200 text-gray-600"
+            variant="outline"
+            className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
           >
             取消
           </Button>
-          <Button onClick={handleConfirm} className="text-white shadow-none">
-            确定
-          </Button>
+          {step === 1 ? (
+            <Button onClick={handleNext} className="h-9 px-6 text-white shadow-none">
+              下一步
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handlePrev}
+                type="button"
+                variant="outline"
+                className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                上一步
+              </Button>
+              <Button onClick={handleConfirm} className="h-9 px-6 text-white shadow-none">
+                确定
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,16 +1,10 @@
 'use client';
 
+import { AlertDialog } from '@/components/common/AlertDialog';
 import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -20,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { pmService } from '@/services/pm';
-import { AlertCircle, Edit2, Plus } from 'lucide-react';
+import { Edit2, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as z from 'zod';
 import { AddDialog } from '../tree/AddDialog';
@@ -310,115 +304,91 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
 
   return (
     <>
-      <Card className="border-none shadow-sm rounded-[12px] overflow-hidden">
-        <SealedForm
-          schema={brandSchema}
-          fields={fields}
-          defaultValues={formData}
-          onSubmit={handleSubmit}
-          readonly={!isEditing}
-          gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-x-12"
-        >
-          {({ form, fields }) => (
-            <>
-              <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100 mx-6 px-0 mb-6 sticky top-0 bg-white z-20">
-                <div className="flex items-center space-x-2">
-                  <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
-                  <CardTitle className="text-lg font-bold text-gray-800">品牌信息</CardTitle>
-                </div>
-                <div className="flex items-center gap-3 shrink-0 justify-end min-w-[140px]">
-                  {isEditing ? (
-                    <div className="flex items-center gap-3 animate-in fade-in duration-200">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          form.reset(formData);
-                          setIsEditing(false);
-                        }}
-                        className=" border-gray-200 text-gray-600 hover:bg-gray-50  cursor-pointer"
-                      >
-                        取消
+      <div className="space-y-6">
+        <Card className="border-none shadow-sm rounded-[12px] overflow-hidden">
+          <SealedForm
+            schema={brandSchema}
+            fields={fields}
+            defaultValues={formData}
+            onSubmit={handleSubmit}
+            readonly={!isEditing}
+            gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-x-12"
+          >
+            {({ form, fields }) => (
+              <>
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100 mx-6 px-0 mb-6 sticky top-0 bg-white z-20">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
+                    <CardTitle className="text-lg font-bold text-gray-800">品牌信息</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 justify-end min-w-[140px]">
+                    {isEditing ? (
+                      <div className="flex items-center gap-3 animate-in fade-in duration-200">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            form.reset(formData);
+                            setIsEditing(false);
+                          }}
+                          className=" border-gray-200 text-gray-600 hover:bg-gray-50  cursor-pointer"
+                        >
+                          取消
+                        </Button>
+                        <Button
+                          type="submit"
+                          className=" text-white  shadow-sm shadow-blue-100 cursor-pointer"
+                        >
+                          确定
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button onClick={() => setIsEditing(true)}>
+                        <Edit2 />
+                        <span>编辑</span>
                       </Button>
-                      <Button
-                        type="submit"
-                        className=" text-white  shadow-sm shadow-blue-100 cursor-pointer"
-                      >
-                        确定
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button onClick={() => setIsEditing(true)}>
-                      <Edit2 />
-                      <span>编辑</span>
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="px-6 pb-8">{fields}</CardContent>
-            </>
-          )}
-        </SealedForm>
-      </Card>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="px-6 pb-8">{fields}</CardContent>
+              </>
+            )}
+          </SealedForm>
+        </Card>
 
-      <Card className="border-none shadow-sm rounded-[12px]">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100 mx-6 px-0 mb-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-[3px] h-4 rounded-full" />
-            <CardTitle className="text-lg font-bold text-gray-800">产品列表</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <Button
-              className=" text-white rounded-[6px] cursor-pointer"
-              onClick={() => setIsProductModalOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" /> 新增
-            </Button>
-          </div>
-          <SealedTable columns={columns} data={products} stripe />
-        </CardContent>
-      </Card>
+        <Card className="border-none shadow-sm rounded-[12px]">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100 mx-6 px-0 mb-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-[3px] h-4 rounded-full" />
+              <CardTitle className="text-lg font-bold text-gray-800">产品列表</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Button onClick={() => setIsProductModalOpen(true)}>
+                <Plus /> 新增
+              </Button>
+            </div>
+            <SealedTable columns={columns} data={products} stripe />
+          </CardContent>
+        </Card>
+      </div>
 
       <AddDialog
         open={isProductModalOpen}
         onOpenChange={setIsProductModalOpen}
         mode="create"
         type="产品"
-        parentName={formData.brand}
+        parents={[{ label: '品牌名称', value: formData.brand }]}
         onSubmit={handleCreateProduct}
       />
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 gap-0">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
-          </DialogHeader>
-          <div className="p-8 flex items-center gap-3">
-            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
-            </div>
-            <span className="text-[15px] text-gray-700 font-medium">确定删除此产品吗？</span>
-          </div>
-
-          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3">
-            <Button
-              variant="ghost"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-600 h-9 px-6 rounded-[4px]"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              取消
-            </Button>
-            <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white"
-              onClick={handleConfirmDelete}
-            >
-              确定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        description="确定删除此产品吗？"
+      />
     </>
   );
 }

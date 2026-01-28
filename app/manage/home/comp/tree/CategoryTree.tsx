@@ -1,14 +1,8 @@
 'use client';
 
+import { AlertDialog } from '@/components/common/AlertDialog';
 import { Tree, TreeDataItem } from '@/components/common/SealedTree';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +10,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ExternalLink, MoreVertical, Plus, Search, Trash2 } from 'lucide-react';
+import { ExternalLink, MoreVertical, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface CategoryTreeProps {
@@ -71,17 +66,16 @@ export function CategoryTree({
         <Separator className="bg-gray-200" />
 
         <Button className="w-full h-9 rounded-[8px] cursor-pointer" onClick={onAddRoot}>
-          <Plus className="mr-2 h-4 w-4" /> 新建品类
+          <Plus /> 新建品类
         </Button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col">
-        {/* 新实现 */}
+      <ScrollArea className="flex-1 w-full px-2 pb-4">
         <Tree
           data={data}
           selectedId={selectedId}
           loading={loading}
-          className="flex-1"
+          className="flex-1 min-w-0 overflow-hidden"
           onNodeClick={(node) => {
             const findLevel = (
               nodes: TreeDataItem[],
@@ -104,7 +98,7 @@ export function CategoryTree({
           renderIcon={({ level }) => {
             if (level >= 3) return null;
             const iconPath = `/images/manage/home/level${level + 1}.svg`;
-            return <img src={iconPath} alt={`level-${level}`} className="w-4 h-4 shrink-0" />;
+            return <img src={iconPath} alt={`level-${level}`} />;
           }}
           renderActions={({ item, level, parentItem }) =>
             level < 3 && (
@@ -154,39 +148,13 @@ export function CategoryTree({
             )
           }
         />
-      </nav>
+      </ScrollArea>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 gap-0">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
-          </DialogHeader>
-          <div className="p-8 flex items-center gap-3">
-            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
-            </div>
-
-            <span className="text-[15px] text-gray-700 font-medium">确定删除吗？</span>
-          </div>
-
-          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3">
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              type="button"
-              variant="ghost"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-600"
-            >
-              取消
-            </Button>
-            <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white"
-              onClick={handleConfirmDelete}
-            >
-              确定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+      />
     </aside>
   );
 }

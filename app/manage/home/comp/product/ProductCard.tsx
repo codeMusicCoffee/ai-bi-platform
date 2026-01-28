@@ -5,9 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
 import { AddHomePage } from './AddHomePage';
-import { BasicInfoTab } from './BasicInfoTab';
+import { BasicInfoTab } from './BasicTab';
 import { BoardTab } from './BoardTab';
-import { LifecycleTab } from './LifecycleTab';
+import { LifeCycleTab } from './LifeTab';
 
 export function ProductCard({
   productId,
@@ -68,7 +68,7 @@ export function ProductCard({
           </TabsContent>
 
           <TabsContent value="lifecycle" className="mt-0 outline-none">
-            <LifecycleTab productId={productId} />
+            <LifeCycleTab productId={productId} />
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-0 outline-none">

@@ -177,7 +177,7 @@ const TreeNode = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       {hasChildren ? (
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <div
@@ -201,7 +201,7 @@ const TreeNode = ({
               />
             </div>
 
-            <div className="flex items-center gap-2 flex-1 truncate">
+            <div className="flex items-center gap-2 flex-1 min-w-0 truncate">
               {item.icon ? (
                 <div className="text-muted-foreground shrink-0">{item.icon}</div>
               ) : renderIcon ? (
@@ -258,7 +258,7 @@ const TreeNode = ({
           )}
           onClick={handleSelect}
         >
-          <div className="flex items-center gap-2 flex-1 truncate">
+          <div className="flex items-center gap-2 flex-1 min-w-0 truncate">
             <div className="w-4 h-4 shrink-0" /> {/* Placeholder for Chevron alignment */}
             {item.icon ? (
               <div className="text-muted-foreground shrink-0">{item.icon}</div>

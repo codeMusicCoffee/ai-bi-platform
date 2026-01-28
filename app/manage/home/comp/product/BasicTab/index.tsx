@@ -1,18 +1,12 @@
 'use client';
 
+import { AlertDialog } from '@/components/common/AlertDialog';
 import ImageUploader from '@/components/common/ImageUploader';
 import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { pmService } from '@/services/pm';
-import { AlertCircle, Edit2, Package, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Package, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import * as z from 'zod';
@@ -295,7 +289,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
               setIsBigEventModalOpen(true);
             }}
           >
-            <Plus className="mr-2 h-4 w-4" /> 新增
+            <Plus /> 新增
           </Button>
         </CardHeader>
         <CardContent className="pt-4 pb-12">
@@ -391,36 +385,11 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
         lifecycleOptions={lifecycles}
       />
 
-      {/* 删除确认弹窗 */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 gap-0 overflow-hidden rounded-lg">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
-          </DialogHeader>
-          <div className="p-8 flex items-center gap-3 bg-white">
-            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
-            </div>
-            <span className="text-[15px] text-gray-700 font-medium">确定删除吗？</span>
-          </div>
-
-          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3 bg-white">
-            <Button
-              variant="ghost"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-600"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              取消
-            </Button>
-            <Button
-              className="bg-[#f05252] hover:bg-[#d94141] text-white"
-              onClick={handleConfirmDelete}
-            >
-              确定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

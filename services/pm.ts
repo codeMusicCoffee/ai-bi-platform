@@ -75,6 +75,8 @@ export const pmService = {
     request.put<any>(`/api/pm/products/${id}`, data, { showSuccessMsg: true }),
   deleteProduct: (id: string) =>
     request.delete(`/api/pm/products/${id}`, {}, { showSuccessMsg: true }),
+  setProductCurrentStage: (productId: string, currentStageId: string) =>
+    request.put<any>(`/api/pm/products/${productId}/current-stage`, { lifecycle_id: currentStageId }, { showSuccessMsg: true }),
 
   // Lifecycles
   getLifecycles: (productId: string) =>
@@ -89,6 +91,10 @@ export const pmService = {
     product_id: string;
     items: { lifecycle_id: string; sort_order: number }[];
   }) => request.put<any>('/api/pm/lifecycles/actions/reorder', data),
+  getLifecycleKanbanTree: (productId: string) =>
+    request.get<{ items: any[]; total: number }>('/api/pm/lifecycles/actions/kanban-tree', {
+      product_id: productId,
+    }),
 
   // Milestones
   getMilestones: (productId: string) =>
@@ -100,18 +106,18 @@ export const pmService = {
   deleteMilestone: (id: string) =>
     request.delete(`/api/pm/milestones/${id}`, {}, { showSuccessMsg: true }),
 
-  // Kanbans
-  getKanbans: (lifecycleId: string) =>
-    request.get<any[]>(`/api/pm/kanbans`, { lifecycle_id: lifecycleId }),
-  createKanban: (data: {
+  // Kanbans (看板配置)
+  getBoards: (lifecycleId: string) =>
+    request.get<any[]>(`/api/pm/kanbans/`, { lifecycle_id: lifecycleId }),
+  createBoard: (data: {
     lifecycle_id: string;
     dataset_id: string;
     module_name: string;
     chart_style: string;
     description: string;
     dataset_fields: string[];
-  }) => request.post<any>('/api/pm/kanbans', data, { showSuccessMsg: true }),
-  updateKanban: (
+  }) => request.post<any>('/api/pm/kanbans/', data, { showSuccessMsg: true }),
+  updateBoard: (
     id: string,
     data: {
       module_name?: string;
@@ -120,6 +126,6 @@ export const pmService = {
       dataset_fields?: string[];
     }
   ) => request.put<any>(`/api/pm/kanbans/${id}`, data, { showSuccessMsg: true }),
-  deleteKanban: (id: string) =>
+  deleteBoard: (id: string) =>
     request.delete(`/api/pm/kanbans/${id}`, {}, { showSuccessMsg: true }),
 };

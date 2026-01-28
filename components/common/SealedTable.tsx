@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import * as React from 'react';
 
 /**
@@ -97,6 +98,16 @@ interface SealedTableProps<T> {
   containerClassName?: string;
   /** 是否正在加载 */
   loading?: boolean;
+  /** 树形结构：子节点字段名，默认为 'children' */
+  childrenColumnName?: string;
+  /** 树形结构：展开的行 Key 集合 */
+  expandedRowKeys?: string[];
+  /** 树形结构：展开改变回调 */
+  onExpand?: (expanded: boolean, record: T) => void;
+  /** 树形结构：缩进宽度，默认 24 */
+  indentSize?: number;
+  /** 树形结构：展示展开图标的列（dataIndex） */
+  treeDataIndex?: keyof T;
 }
 
 export function SealedTable<T>({
@@ -113,15 +124,37 @@ export function SealedTable<T>({
   pagination,
   containerClassName,
   loading = false,
+  childrenColumnName = 'children',
+  expandedRowKeys,
+  onExpand,
+  indentSize = 24,
+  treeDataIndex,
 }: SealedTableProps<T>) {
-  const isAllSelected = data.length > 0 && selectedRowKeys?.length === data.length;
+  const getChildKeys = React.useCallback(
+    (items: any[]): string[] => {
+      let keys: string[] = [];
+      items.forEach((item) => {
+        keys.push(String(item[rowKey]));
+        if (item[childrenColumnName]) {
+          keys = [...keys, ...getChildKeys(item[childrenColumnName])];
+        }
+      });
+      return keys;
+    },
+    [rowKey, childrenColumnName]
+  );
+
+  const allTreeKeys = React.useMemo(() => getChildKeys(data), [data, getChildKeys]);
+
+  const isAllSelected =
+    allTreeKeys.length > 0 && allTreeKeys.every((k) => selectedRowKeys?.includes(k));
+
   const isPartiallySelected =
-    (selectedRowKeys?.length ?? 0) > 0 && (selectedRowKeys?.length ?? 0) < data.length;
+    !isAllSelected && allTreeKeys.some((k) => selectedRowKeys?.includes(k));
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allKeys = data.map((item: any) => String(item[rowKey]));
-      onSelectionChange?.(allKeys);
+      onSelectionChange?.(allTreeKeys);
     } else {
       onSelectionChange?.([]);
     }
@@ -129,10 +162,143 @@ export function SealedTable<T>({
 
   const handleSelectRow = (record: any, checked: boolean) => {
     const key = String(record[rowKey]);
-    const nextKeys = checked
-      ? [...(selectedRowKeys || []), key]
-      : (selectedRowKeys || []).filter((k) => k !== key);
+    const descendants = getChildKeys(record[childrenColumnName] || []);
+    const allAffected = [key, ...descendants];
+
+    let nextKeys = [...(selectedRowKeys || [])];
+
+    if (checked) {
+      // 全选当前节点及其所有子节点
+      nextKeys = Array.from(new Set([...nextKeys, ...allAffected]));
+    } else {
+      // 取消勾选当前节点及其所有子节点
+      nextKeys = nextKeys.filter((k) => !allAffected.includes(k));
+    }
+
     onSelectionChange?.(nextKeys);
+  };
+
+  const renderRows = (items: T[], level = 0): React.ReactNode[] => {
+    return items.flatMap((record, rowIndex) => {
+      const key = String((record as any)[rowKey]);
+      const children = (record as any)[childrenColumnName] as T[] | undefined;
+      const isExpanded = expandedRowKeys?.includes(key);
+      const hasChildren = !!(children && children.length > 0);
+
+      const getCheckState = (): boolean | 'indeterminate' => {
+        if (!hasChildren) return selectedRowKeys?.includes(key) || false;
+
+        const descendantKeys = getChildKeys(children);
+        const selectedDescendants = descendantKeys.filter((k) => selectedRowKeys?.includes(k));
+
+        if (selectedDescendants.length === descendantKeys.length && descendantKeys.length > 0) {
+          return true;
+        }
+        if (selectedDescendants.length > 0) {
+          return 'indeterminate';
+        }
+        return selectedRowKeys?.includes(key) ? 'indeterminate' : false;
+      };
+
+      const checkState = getCheckState();
+
+      const row = (
+        <TableRow
+          key={key}
+          onClick={() => onRowClick?.(record, rowIndex)}
+          className={cn(
+            'transition-colors hover:bg-[#f5f7fa] group',
+            stripe && rowIndex % 2 === 1 && 'bg-[#fafafa]',
+            onRowClick && 'cursor-pointer',
+            rowClassName
+          )}
+        >
+          {onSelectionChange && (
+            <TableCell className="w-[50px] px-2 py-0 text-center align-middle border-b border-[#ebeef5] group-last:border-0">
+              <Checkbox
+                checked={checkState}
+                onCheckedChange={(checked) => handleSelectRow(record, !!checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 shrink-0 border-[#dcdfe6] data-[state=checked]:border-[#306EFD] data-[state=checked]:bg-[#306EFD] hover:border-[#306EFD] cursor-pointer transition-none shadow-none"
+              />
+            </TableCell>
+          )}
+          {columns.map((col, colIndex) => {
+            const value = col.dataIndex ? record[col.dataIndex] : undefined;
+            const isTreeCol = treeDataIndex ? col.dataIndex === treeDataIndex : colIndex === 0;
+
+            return (
+              <TableCell
+                key={col.key || (col.dataIndex as string) || colIndex}
+                style={{
+                  textAlign: col.align || 'left',
+                }}
+                className={cn(
+                  'h-10 px-2 py-0 text-[14px] text-[#202224] align-middle border-b border-[#ebeef5] group-last:border-0',
+                  col.align === 'center'
+                    ? 'text-center'
+                    : col.align === 'right'
+                      ? 'text-right'
+                      : 'text-left'
+                )}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    paddingLeft: isTreeCol ? level * indentSize : 0,
+                  }}
+                >
+                  {isTreeCol && hasChildren && (
+                    <div
+                      className="mr-1 cursor-pointer p-1 hover:bg-gray-100 rounded transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExpand?.(!isExpanded, record);
+                      }}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+                  {isTreeCol && !hasChildren && level > 0 && <div className="w-6" />}
+                  <div className="flex-1 truncate">
+                    {col.ellipsis ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="truncate w-full cursor-default">
+                              {col.render
+                                ? col.render(value, record, rowIndex)
+                                : (value as React.ReactNode)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[300px] break-all">
+                            {col.render
+                              ? col.render(value, record, rowIndex)
+                              : (value as React.ReactNode)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : col.render ? (
+                      col.render(value, record, rowIndex)
+                    ) : (
+                      (value as React.ReactNode)
+                    )}
+                  </div>
+                </div>
+              </TableCell>
+            );
+          })}
+        </TableRow>
+      );
+
+      const childrenRows = isExpanded && children ? renderRows(children, level + 1) : [];
+      return [row, ...childrenRows];
+    });
   };
 
   return (
@@ -151,6 +317,7 @@ export function SealedTable<T>({
                   <Checkbox
                     checked={isAllSelected || (isPartiallySelected ? 'indeterminate' : false)}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    className="w-4 h-4 shrink-0 border-[#dcdfe6] data-[state=checked]:border-[#306EFD] data-[state=checked]:bg-[#306EFD] hover:border-[#306EFD] cursor-pointer transition-none shadow-none"
                   />
                 </TableHead>
               )}
@@ -189,70 +356,7 @@ export function SealedTable<T>({
                 </TableCell>
               </TableRow>
             ) : data && data.length > 0 ? (
-              data.map((record, rowIndex) => (
-                <TableRow
-                  key={rowIndex}
-                  onClick={() => onRowClick?.(record, rowIndex)}
-                  className={cn(
-                    'transition-colors hover:bg-[#f5f7fa] group',
-                    stripe && rowIndex % 2 === 1 && 'bg-[#fafafa]',
-                    onRowClick && 'cursor-pointer',
-                    rowClassName
-                  )}
-                >
-                  {onSelectionChange && (
-                    <TableCell className="w-[50px] px-2 py-0 text-center align-middle border-b border-[#ebeef5] group-last:border-0">
-                      <Checkbox
-                        checked={selectedRowKeys?.includes(String((record as any)[rowKey]))}
-                        onCheckedChange={(checked) => handleSelectRow(record, !!checked)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </TableCell>
-                  )}
-                  {columns.map((col, colIndex) => {
-                    const value = col.dataIndex ? record[col.dataIndex] : undefined;
-                    return (
-                      <TableCell
-                        key={col.key || (col.dataIndex as string) || colIndex}
-                        style={{
-                          textAlign: col.align || 'left',
-                        }}
-                        className={cn(
-                          'h-10 px-2 py-0 text-[14px] text-[#202224] align-middle border-b border-[#ebeef5] group-last:border-0',
-                          col.align === 'center'
-                            ? 'text-center'
-                            : col.align === 'right'
-                              ? 'text-right'
-                              : 'text-left'
-                        )}
-                      >
-                        {col.ellipsis ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="truncate w-full cursor-default">
-                                  {col.render
-                                    ? col.render(value, record, rowIndex)
-                                    : (value as React.ReactNode)}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-[300px] break-all">
-                                {col.render
-                                  ? col.render(value, record, rowIndex)
-                                  : (value as React.ReactNode)}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : col.render ? (
-                          col.render(value, record, rowIndex)
-                        ) : (
-                          (value as React.ReactNode)
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
+              renderRows(data)
             ) : (
               <TableRow className="hover:bg-transparent border-none">
                 <TableCell
