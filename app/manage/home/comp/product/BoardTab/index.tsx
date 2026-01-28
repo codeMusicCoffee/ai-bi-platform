@@ -1,5 +1,5 @@
-'use client';
-
+import { AlertDialog } from '@/components/common/AlertDialog';
+import { SealedSearch, SearchFieldConfig } from '@/components/common/SealedSearch';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,15 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreVertical, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { AddBoard } from './AddBoard';
 
@@ -35,11 +27,64 @@ interface BoardData {
   recentPublishAt: string;
 }
 
+const searchFields: SearchFieldConfig[] = [
+  {
+    name: 'name',
+    label: '名称',
+    type: 'input',
+    placeholder: '请输入名称',
+  },
+  {
+    name: 'type',
+    label: '类型',
+    type: 'select',
+    placeholder: '请选择类型',
+    options: [
+      { label: '看板', value: 'board' },
+      { label: '概览', value: 'overview' },
+    ],
+  },
+  {
+    name: 'status',
+    label: '状态',
+    type: 'select',
+    placeholder: '请选择状态',
+    options: [
+      { label: '待发布', value: 'draft' },
+      { label: '已发布', value: 'published' },
+      { label: '已发布有调整', value: 'updated' },
+    ],
+  },
+];
+
 export function BoardTab({ productId }: { productId: string }) {
   const [loading] = useState(false);
   const [page, setPage] = useState(4); // Match the mock image's active page 4
   const [pageSize, setPageSize] = useState(10);
   const [isAddBoardModalOpen, setIsAddBoardModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+  const handleOpenDelete = (id: string) => {
+    setItemToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (itemToDelete) {
+      console.log('Deleting item:', itemToDelete);
+      // Actual delete logic would go here
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  };
+
+  const handleSearch = (values: any) => {
+    console.log('Search criteria:', values);
+  };
+
+  const handleReset = () => {
+    console.log('Search reset');
+  };
 
   // Mock data based on the image
   const [data] = useState<BoardData[]>([
@@ -138,13 +183,20 @@ export function BoardTab({ productId }: { productId: string }) {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="text-gray-400 hover:text-gray-600 cursor-pointer">
-                <MoreHorizontal size={16} />
-              </button>
+              <div className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
+                <MoreVertical className="h-3.5 w-3.5 text-gray-400 shrink-0 hover:text-gray-600 transition-colors" />
+              </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="cursor-pointer">复制分享链接</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-500 cursor-pointer">删除</DropdownMenuItem>
+            <DropdownMenuContent side="bottom" align="end" className="w-[120px]">
+              <DropdownMenuItem className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer">
+                复制分享链接
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer"
+                onClick={() => handleOpenDelete(record.id)}
+              >
+                删除
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -171,47 +223,12 @@ export function BoardTab({ productId }: { productId: string }) {
           </div>
 
           {/* Search Form */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-[14px] text-gray-600 whitespace-nowrap">名称:</span>
-              <Input placeholder="请输入名称" className="h-9 w-48 border-gray-200" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[14px] text-gray-600 whitespace-nowrap">类型:</span>
-              <div className="w-48">
-                <Select>
-                  <SelectTrigger className="h-9 border-gray-200">
-                    <SelectValue placeholder="请选择类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="board">看板</SelectItem>
-                    <SelectItem value="overview">概览</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[14px] text-gray-600 whitespace-nowrap">状态:</span>
-              <div className="w-48">
-                <Select>
-                  <SelectTrigger className="h-9 border-gray-200">
-                    <SelectValue placeholder="请选择状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">待发布</SelectItem>
-                    <SelectItem value="published">已发布</SelectItem>
-                    <SelectItem value="updated">已发布有调整</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 ml-auto">
-              <Button className=" text-white  cursor-pointer">查询</Button>
-              <Button variant="outline" className=" border-gray-200 text-gray-600  cursor-pointer">
-                重置
-              </Button>
-            </div>
-          </div>
+          <SealedSearch
+            fields={searchFields}
+            onSearch={handleSearch}
+            onReset={handleReset}
+            className="mb-6"
+          />
 
           {/* Table with internal pagination */}
           <SealedTable
@@ -236,6 +253,12 @@ export function BoardTab({ productId }: { productId: string }) {
         open={isAddBoardModalOpen}
         onOpenChange={setIsAddBoardModalOpen}
         productId={productId}
+      />
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
