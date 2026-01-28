@@ -1,6 +1,7 @@
 'use client';
 
-import { SealedTable, SealedTableColumn } from '@/components/SealedTable';
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
+import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -16,7 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
 import {

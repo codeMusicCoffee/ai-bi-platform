@@ -1,6 +1,6 @@
 'use client';
 
-import { TreeDataItem } from '@/components/ui/tree';
+import { TreeDataItem } from '@/components/common/SealedTree';
 import { pmService } from '@/services/pm';
 import { useCallback, useEffect, useState } from 'react';
 import { BrandCard } from './comp/brand/BrandCard';

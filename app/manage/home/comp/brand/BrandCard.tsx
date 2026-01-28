@@ -1,6 +1,7 @@
 'use client';
 
-import { SealedTable, SealedTableColumn } from '@/components/SealedTable';
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
+import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import {
   Select,
   SelectContent,
@@ -386,7 +386,7 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
         onOpenChange={setIsProductModalOpen}
         mode="create"
         type="产品"
-        parents={[{ label: '品牌名称', value: formData.brand }]}
+        parentName={formData.brand}
         onSubmit={handleCreateProduct}
       />
 

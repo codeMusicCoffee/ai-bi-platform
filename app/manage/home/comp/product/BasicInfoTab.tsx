@@ -1,6 +1,7 @@
 'use client';
 
-import ImageUploader from '@/components/ImageUploader';
+import ImageUploader from '@/components/common/ImageUploader';
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import { pmService } from '@/services/pm';
 import { AlertCircle, Edit2, Package, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';

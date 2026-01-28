@@ -1,5 +1,6 @@
 'use client';
 
+import { Tree, TreeDataItem } from '@/components/common/SealedTree';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Tree, TreeDataItem } from '@/components/ui/tree';
 import { AlertCircle, ExternalLink, MoreVertical, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 

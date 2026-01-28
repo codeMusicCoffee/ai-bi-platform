@@ -1,9 +1,9 @@
 'use client';
 
-import AiChat, { ProgressInfo } from '@/components/AiChat';
-import DashboardPreview from '@/components/DashboardPreview';
-import FullScreenToggle from '@/components/FullScreenToggle';
 import { useState } from 'react';
+import AiChat, { ProgressInfo } from './comp/AiChat';
+import DashboardPreview from './comp/DashboardPreview';
+import FullScreenToggle from './comp/FullScreenToggle';
 
 export default function AiChatPage() {
   const [userInput, setUserInput] = useState('');

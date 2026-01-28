@@ -1,6 +1,6 @@
 'use client';
 
-import { SealedTable, SealedTableColumn } from '@/components/SealedTable';
+import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

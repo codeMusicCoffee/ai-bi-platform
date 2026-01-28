@@ -1,5 +1,6 @@
 'use client';
 
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import {
   Select,
   SelectContent,

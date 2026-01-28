@@ -1,6 +1,7 @@
 'use client';
 
-import ImageUploader from '@/components/ImageUploader';
+import ImageUploader from '@/components/common/ImageUploader';
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import * as z from 'zod';
 
 export type CategoryFormType = '品类' | '系列' | '品牌' | '产品';
