@@ -6,11 +6,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { SealedForm, SealedFormFieldConfig } from '@/components/ui/sealed-form';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
@@ -34,7 +39,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Edit2, Home, Plus, X } from 'lucide-react';
+import { AlertCircle, Edit2, MoreVertical, Plus } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
@@ -71,11 +76,13 @@ function SortableItem({
   activeNodeId,
   onNodeClick,
   onOpenDelete,
+  onSetCurrent,
 }: {
   node: LifecycleNode;
   activeNodeId: string | null;
   onNodeClick: (id: string) => void;
-  onOpenDelete: (e: React.MouseEvent, id: string) => void;
+  onOpenDelete: (id: string) => void;
+  onSetCurrent: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: node.id,
@@ -87,47 +94,79 @@ function SortableItem({
     zIndex: isDragging ? 50 : 1,
   };
 
+  const isActive = node.id === activeNodeId;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={cn(
-        'group relative flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-[10px] shadow-sm min-w-[140px] cursor-pointer touch-none transition-all',
-        node.id === activeNodeId
-          ? 'border-[#306EFD] ring-4 ring-blue-50/50'
-          : 'border-transparent hover:border-gray-100',
-        isDragging && 'opacity-0'
-      )}
+      className="flex items-center shrink-0 w-[160px]"
       onClick={() => onNodeClick(node.id)}
     >
       <div
         className={cn(
-          'w-7 h-7 rounded-lg flex items-center justify-center',
-          node.id === activeNodeId ? 'bg-[#306EFD] text-white' : 'bg-[#f5f7fa] text-[#306EFD]'
+          'group relative flex items-center gap-2 px-3 py-2 bg-white rounded-[10px] shadow-sm w-full cursor-pointer touch-none transition-colors duration-200',
+          isActive
+            ? 'ring-1 ring-inset ring-[#306EFD]'
+            : 'ring-1 ring-inset ring-[#f0f0f0] hover:ring-gray-200',
+          isDragging && 'opacity-0'
         )}
       >
-        <Home size={16} />
-      </div>
-      <span
-        className={cn(
-          'font-bold text-[14px] select-none',
-          node.id === activeNodeId ? 'text-[#262626]' : 'text-[#595959]'
-        )}
-      >
-        {node.name}
-      </span>
+        <div className="w-7 h-7 flex items-center justify-center shrink-0">
+          <img
+            src={
+              node.active
+                ? '/images/manage/product/activeNode.svg'
+                : '/images/manage/product/node.svg'
+            }
+            alt="node-icon"
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <span
+          className={cn(
+            'font-bold text-[14px] select-none flex-1 truncate',
+            isActive ? 'text-[#262626]' : 'text-[#595959]'
+          )}
+        >
+          {node.name}
+        </span>
 
-      <button
-        className={cn(
-          'ml-auto text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100',
-          node.id === activeNodeId && 'opacity-100'
+        {isActive && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3.5 w-3.5 text-gray-400 shrink-0 hover:text-gray-600 transition-colors" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-[120px]">
+              <DropdownMenuItem
+                className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetCurrent(node.id);
+                }}
+              >
+                <span>设为当前阶段</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-gray-600 focus:text-[#3b82f6] focus:bg-blue-50 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDelete(node.id);
+                }}
+              >
+                <span>删除</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        onClick={(e) => onOpenDelete(e, node.id)}
-      >
-        <X size={14} className="rounded-full bg-gray-100 p-0.5" />
-      </button>
+      </div>
     </div>
   );
 }
@@ -204,7 +243,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
         id: item.id,
         name: item.name,
         description: item.description || '',
-        active: false,
+        active: item.is_current || false,
       }));
       setNodes(newNodes);
 
@@ -339,10 +378,19 @@ export function LifecycleTab({ productId }: { productId: string }) {
     setActiveNodeId(id);
   };
 
-  const handleOpenDelete = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const handleOpenDelete = (id: string) => {
     setNodeToDelete(id);
     setIsDeleteOpen(true);
+  };
+
+  const handleSetCurrentStage = async (id: string) => {
+    try {
+      await pmService.updateProduct(productId, { current_lifecycle_id: id });
+      toast.success('设置当前阶段成功');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to set current stage:', error);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -484,6 +532,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
                         activeNodeId={activeNodeId}
                         onNodeClick={handleNodeClick}
                         onOpenDelete={handleOpenDelete}
+                        onSetCurrent={handleSetCurrentStage}
                       />
 
                       {/* Arrow between nodes - rendered outside sortable item */}
@@ -517,31 +566,31 @@ export function LifecycleTab({ productId }: { productId: string }) {
                 {dragActiveId ? (
                   <div
                     className={cn(
-                      'flex items-center gap-2 px-4 py-2 bg-white border-2 rounded-[10px] shadow-xl min-w-[140px] cursor-grabbing',
+                      'flex items-center gap-2 px-3 py-2 bg-white rounded-[10px] shadow-xl w-[160px] cursor-grabbing',
                       dragActiveId === activeNodeId
-                        ? 'border-[#306EFD] ring-4 ring-blue-50/50'
-                        : 'border-gray-200'
+                        ? 'ring-1 ring-inset ring-[#306EFD]'
+                        : 'ring-1 ring-inset ring-gray-200'
                     )}
                   >
-                    <div
-                      className={cn(
-                        'w-7 h-7 rounded-lg flex items-center justify-center',
-                        dragActiveId === activeNodeId
-                          ? 'bg-[#306EFD] text-white'
-                          : 'bg-[#f5f7fa] text-[#306EFD]'
-                      )}
-                    >
-                      <Home size={16} />
+                    <div className="w-7 h-7 flex items-center justify-center shrink-0">
+                      <img
+                        src={
+                          nodes.find((n) => n.id === dragActiveId)?.active
+                            ? '/images/manage/product/activeNode.svg'
+                            : '/images/manage/product/node.svg'
+                        }
+                        alt="node-icon"
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <span
                       className={cn(
-                        'font-bold text-[14px]',
+                        'font-bold text-[14px] flex-1 truncate',
                         dragActiveId === activeNodeId ? 'text-[#262626]' : 'text-[#595959]'
                       )}
                     >
                       {nodes.find((n) => n.id === dragActiveId)?.name}
                     </span>
-                    <X size={14} className="ml-auto text-gray-300 rounded-full bg-gray-100 p-0.5" />
                   </div>
                 ) : null}
               </DragOverlay>
@@ -579,21 +628,15 @@ export function LifecycleTab({ productId }: { productId: string }) {
                         }}
                         type="button"
                         variant="outline"
-                        className=" border-gray-200 text-gray-600"
+                        className=" border-gray-200 text-gray-600 hover:bg-gray-50"
                       >
                         取消
                       </Button>
-                      <Button type="submit" className=" text-white  shadow-sm cursor-pointer">
-                        确定
-                      </Button>
+                      <Button type="submit">确定</Button>
                     </div>
                   ) : (
-                    <Button
-                      type="button"
-                      onClick={() => setIsEditingNodeInfo(true)}
-                      className="  text-white  shadow-sm flex items-center gap-2 cursor-pointer animate-in fade-in duration-200"
-                    >
-                      <Edit2 size={14} />
+                    <Button type="button" onClick={() => setIsEditingNodeInfo(true)}>
+                      <Edit2 />
                       <span>编辑</span>
                     </Button>
                   )}
@@ -643,30 +686,33 @@ export function LifecycleTab({ productId }: { productId: string }) {
         </div>
       </CardContent>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-[442px] p-0 border-none rounded-[12px] overflow-hidden">
-          <DialogHeader className="px-6 pt-8 pb-4">
-            <DialogTitle className="text-lg font-bold text-gray-800">确认删除</DialogTitle>
+        <DialogContent className="sm:max-w-[400px] p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="text-[15px] font-medium text-gray-800">删除提示</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-2">
-            <DialogDescription className="text-[14px] text-gray-600 leading-relaxed">
-              您确定要删除该节点吗？删除后将无法恢复，且与之关联的配置信息也将一并移除。
-            </DialogDescription>
+          <div className="p-8 flex items-center gap-3">
+            <div className="bg-[#fee2e2] rounded-full p-1.5 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-white fill-[#f05252]" />
+            </div>
+
+            <span className="text-[15px] text-gray-700 font-medium">确定删除吗？</span>
           </div>
-          <DialogFooter className="px-6 py-6 bg-gray-50/50 mt-4 gap-3 sm:gap-0">
+
+          <DialogFooter className="p-4 pt-0 flex sm:justify-end gap-3">
             <Button
-              variant="outline"
               onClick={() => setIsDeleteOpen(false)}
-              className="h-9 px-6 border-gray-100 text-gray-600 rounded-[6px] cursor-pointer"
+              type="button"
+              variant="outline"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600 border-none"
             >
               取消
             </Button>
             <Button
+              className="bg-[#f05252] hover:bg-[#d94141] text-white"
               onClick={handleConfirmDelete}
-              className="h-9 px-6 bg-[#F56C6C] hover:bg-[#e45d5d] text-white rounded-[6px] shadow-sm cursor-pointer ml-3"
             >
-              确定删除
+              确定
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -682,11 +728,7 @@ export function LifecycleTab({ productId }: { productId: string }) {
       />
 
       {/* Add Board Dialog */}
-      <AddBoard
-        open={isAddBoardOpen}
-        onOpenChange={setIsAddBoardOpen}
-        productId={productId}
-      />
+      <AddBoard open={isAddBoardOpen} onOpenChange={setIsAddBoardOpen} productId={productId} />
     </Card>
   );
 }

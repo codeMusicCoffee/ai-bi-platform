@@ -40,4 +40,20 @@ If you believe a modification to a "frozen" configuration is absolutely necessar
 
 ---
 
+## 🎨 UI & Styling Rules
+
+### 4. Component & Style Protocol
+
+You **MUST** strictly follow the UI patterns and styling rules defined in:
+
+- **`.agent/instructions/component-rule.md`**
+
+**Core Requirements:**
+
+- **No Out-of-Spec Styles**: Do not use inline styles or Tailwind classes that deviate from the examples in `component-rule.md` (e.g., custom shadows, specific hex colors not listed, or complex border-radius).
+- **Atomic Consistency**: Every button, dialog, and dropdown must look and behave exactly like the reference examples.
+- **Stability First**: Refer to the "UI 与功能稳定性" sections in the global rules, but prioritize the specific examples in `component-rule.md` for visual implementation.
+
+---
+
 _Failure to follow these instructions will result in broken previews and unstable application states._

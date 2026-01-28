@@ -20,7 +20,7 @@ interface AddDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'edit';
   type: CategoryFormType;
-  parentName?: string;
+  parents?: { label: string; value: string }[];
   initialData?: {
     name: string;
     image_url?: string;
@@ -33,7 +33,7 @@ export function AddDialog({
   onOpenChange,
   mode,
   type,
-  parentName,
+  parents,
   initialData,
   onSubmit,
 }: AddDialogProps) {
@@ -63,18 +63,16 @@ export function AddDialog({
         </DialogHeader>
 
         <div className="py-4">
-          {parentName && (
-            <div className="grid gap-2 mb-4">
-              <label className="text-[13px] font-medium text-gray-400">
-                {type === '系列' ? '品类名称' : type === '品牌' ? '系列名称' : '品牌名称'}
-              </label>
+          {parents?.map((parent, idx) => (
+            <div key={idx} className="grid gap-2 mb-4">
+              <label className="text-[13px] font-medium text-gray-400">{parent.label}</label>
               <Input
-                value={parentName}
+                value={parent.value}
                 disabled
                 className="h-10 bg-gray-50 text-gray-400 border-gray-100 rounded-[6px]"
               />
             </div>
-          )}
+          ))}
 
           <SealedForm
             schema={schema}

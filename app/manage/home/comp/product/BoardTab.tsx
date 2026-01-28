@@ -164,10 +164,7 @@ export function BoardTab({ productId }: { productId: string }) {
 
           {/* Add Button */}
           <div className="mb-6">
-            <Button
-              onClick={() => setIsAddBoardModalOpen(true)}
-              className=" text-white flex items-center gap-2 cursor-pointer"
-            >
+            <Button onClick={() => setIsAddBoardModalOpen(true)}>
               <Plus size={16} />
               <span>新增看板</span>
             </Button>

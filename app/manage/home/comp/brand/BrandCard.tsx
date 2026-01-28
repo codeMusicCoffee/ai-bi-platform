@@ -103,7 +103,9 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
             price: p.price || '-',
             packaging: p.packaging_type || '-',
             channels: p.main_channel || '-',
-            stage: p.stage || '-',
+            stage: Array.isArray(p.stage)
+              ? p.stage.find((s: any) => s.is_current)?.stage_name || '-'
+              : '-',
             image_url: p.image_url || '',
           }))
         );
@@ -346,12 +348,8 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      type="button"
-                      onClick={() => setIsEditing(true)}
-                      className=" text-white shadow-sm shadow-blue-100 flex items-center gap-2 cursor-pointer"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
+                    <Button onClick={() => setIsEditing(true)}>
+                      <Edit2 />
                       <span>编辑</span>
                     </Button>
                   )}
@@ -388,7 +386,7 @@ export function BrandCard({ brandId, onRefreshTree, onViewProduct }: BrandCardPr
         onOpenChange={setIsProductModalOpen}
         mode="create"
         type="产品"
-        parentName={formData.brand}
+        parents={[{ label: '品牌名称', value: formData.brand }]}
         onSubmit={handleCreateProduct}
       />
 

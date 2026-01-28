@@ -265,9 +265,7 @@ export default function ProductManagePage() {
     if (selectedLevel === 0) emptyType = '系列';
     else if (selectedLevel === 1) emptyType = '品牌';
 
-    return (
-      <ProductEmptyState type={emptyType} onAdd={handleAdd} selectedName={selectedItem?.label} />
-    );
+    return <ProductEmptyState type={emptyType} onAdd={handleAdd} />;
   };
 
   return (
@@ -295,7 +293,34 @@ export default function ProductManagePage() {
         onOpenChange={setDialogOpen}
         mode={dialogConfig.mode}
         type={dialogConfig.type}
-        parentName={dialogConfig.parentItem?.label}
+        parents={(() => {
+          if (!dialogConfig.parentItem) return undefined;
+          if (dialogConfig.type === '品牌') {
+            const parentId = (dialogConfig.parentItem as any).parentId;
+            const findNode = (nodes: TreeDataItem[], id: string): TreeDataItem | null => {
+              for (const node of nodes) {
+                if (node.id === id) return node;
+                if (node.children) {
+                  const found = findNode(node.children, id);
+                  if (found) return found;
+                }
+              }
+              return null;
+            };
+            const categoryNode = parentId ? findNode(treeData, parentId) : null;
+            return [
+              { label: '品类名称', value: categoryNode?.label || '未知品类' },
+              { label: '系列名称', value: dialogConfig.parentItem.label },
+            ];
+          }
+          if (dialogConfig.type === '系列') {
+            return [{ label: '品类名称', value: dialogConfig.parentItem.label }];
+          }
+          if (dialogConfig.type === '产品') {
+            return [{ label: '品牌名称', value: dialogConfig.parentItem.label }];
+          }
+          return undefined;
+        })()}
         initialData={
           dialogConfig.mode === 'edit' ? { name: dialogConfig.item?.label || '' } : undefined
         }
