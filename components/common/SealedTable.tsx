@@ -83,6 +83,8 @@ export interface SealedTableColumn<T> {
   type?: string;
   /** 溢出省略 */
   ellipsis?: boolean;
+  /** 是否必填（在标题前显示 *） */
+  required?: boolean;
 }
 
 /** 分页配置 */
@@ -577,6 +579,7 @@ export function SealedTable<T>({
                         : 'text-left'
                   )}
                 >
+                  {col.required && <span className="text-red-500 mr-1">*</span>}
                   {col.title}
                 </TableHead>
               ))}
