@@ -207,17 +207,17 @@ export function BoardTab({ productId }: { productId: string }) {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <Card className="border-none shadow-sm rounded-[12px] bg-white">
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-4">
             <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
             <h3 className="text-[16px] font-bold text-gray-800">看板列表</h3>
           </div>
 
           {/* Add Button */}
-          <div className="mb-6">
+          <div className="mb-4">
             <Button onClick={() => setIsAddBoardModalOpen(true)}>
-              <Plus size={16} />
+              <Plus />
               <span>新增看板</span>
             </Button>
           </div>
@@ -227,9 +227,8 @@ export function BoardTab({ productId }: { productId: string }) {
             fields={searchFields}
             onSearch={handleSearch}
             onReset={handleReset}
-            className="mb-6"
+            className="mb-4"
           />
-
           {/* Table with internal pagination */}
           <SealedTable
             columns={columns}

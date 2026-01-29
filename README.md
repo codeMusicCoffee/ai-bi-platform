@@ -1,39 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI-BI Platform
 
-## Getting Started
+一个基于 Next.js 的 **AI 驱动商业智能分析平台**，集成了产品管理、数据可视化和智能对话分析功能。
 
-First, run the development server:
+---
+
+## 🚀 快速开始
+
+### 1. 安装依赖
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 配置环境变量
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+复制 `.env.local` 示例文件并填写必要的配置：
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# 后端 API 地址
+NEXT_PUBLIC_API_URL=http://192.168.110.29:8000
 
-## Learn More
+# AI 服务配置（如需使用 AI Chat 功能）
+GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. 启动开发服务器
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📦 技术栈
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **核心框架**: Next.js 16.1.1 (App Router)
+- **UI 组件库**: Radix UI + shadcn/ui
+- **样式方案**: Tailwind CSS 4.x
+- **表单处理**: React Hook Form + Zod
+- **状态管理**: Zustand
+- **拖拽功能**: @dnd-kit
+- **AI 能力**: Vercel AI SDK + Google Generative AI
+- **图表展示**: Recharts
+- **包管理器**: pnpm
+- **Node 版本**: 20.19.6 (Volta 管理)
 
-后端接口文档地址：
-http://192.168.110.29:8000/docs
+---
+
+## 📂 项目结构
+
+```
+ai-bi-platform/
+├── .agent/                   # AI 指令中心（用于 AI 驱动开发）
+│   ├── instructions/         # 开发规范（组件、API、命名）
+│   └── workflows/           # 标准工作流（新增功能、修复 Bug）
+├── .spec/                    # 复杂模块的深度说明
+│   ├── sandbox.md           # Sandpack 配置说明
+│   └── pm-module.md         # 产品管理模块架构
+├── app/                      # Next.js 页面 (App Router)
+│   ├── (auth)/              # 认证相关
+│   ├── manage/              # 管理后台
+│   │   └── home/            # 产品管理主页
+│   └── aichat/              # AI 对话分析
+├── components/               # 组件库
+│   ├── ui/                  # shadcn 原子组件
+│   └── common/              # 自定义 Sealed 系列组件
+├── services/                 # API 服务层
+├── lib/                      # 工具函数 (request, utils)
+├── store/                    # Zustand 全局状态
+├── AGENT.md                  # AI 开发准则（最高优先级）
+├── PROJECT_LOG.md            # 开发日志
+└── TODO.md                   # 待办事项
+```
+
+---
+
+## 🤖 AI 驱动开发
+
+本项目采用 **AI Native** 开发模式，所有 AI 助手（如 GitHub Copilot、Cursor、Antigravity）在协作时必须遵循以下规范：
+
+### 核心文档
+
+1. **`AGENT.md`**: AI 的最高行动准则，定义了冻结区和核心原则
+2. **`.agent/instructions/`**: 各领域的详细规范
+   - `component-rule.md`: UI 组件样式规范
+   - `api-rule.md`: API 调用规范
+   - `naming-convention.md`: 命名规范
+   - `sealed-components.md`: 自定义组件使用指南
+3. **`.agent/workflows/`**: 标准工作流
+   - `/add-page`: 新增页面
+   - `/fix-bug`: 修复 Bug
+   - `/add-feature`: 新增功能
+
+### 使用示例
+
+在与 AI 协作时，可以直接引用工作流：
+
+```
+/add-feature 用户管理模块
+```
+
+AI 将自动按照标准流程执行任务。
+
+---
+
+## 🎨 核心功能模块
+
+### 1. 产品管理 (PM)
+
+- **路径**: `app/manage/home/comp/product/`
+- **功能**:
+  - 四级分类树（品类 → 系列 → 品牌 → 产品）
+  - 品牌详细信息管理
+  - 产品生命周期管理（拖拽排序）
+  - 看板配置（图表样式、数据集关联）
+
+### 2. AI 对话分析
+
+- **路径**: `app/aichat/`
+- **功能**:
+  - 流式对话（基于 Vercel AI SDK）
+  - 智能图表生成
+  - Sandpack 在线预览
+
+### 3. 数据集管理
+
+- **路径**: `services/dataset.ts`
+- **功能**: 数据集查询与关联
+
+---
+
+## 📝 开发规范
+
+### UI 开发
+
+所有 UI 必须严格遵循 `.agent/instructions/component-rule.md`：
+
+- 主色调: `#306EFD`
+- 容器圆角: `rounded-[12px]`
+- 组件圆角: `rounded-[6px]`
+- 操作文字: `text-[13px]`
+
+### API 调用
+
+统一使用 `services/` 下的服务层：
+
+```typescript
+import { pmService } from '@/services/pm';
+
+const users = await pmService.getUsers();
+```
+
+---
+
+## 🧪 测试与构建
+
+```bash
+# 代码检查
+pnpm run lint
+
+# 生产构建
+pnpm run build
+
+# 启动生产服务器
+pnpm start
+```
+
+---
+
+## 📚 后端接口文档
+
+后端 API 文档地址：[http://192.168.110.29:8000/docs](http://192.168.110.29:8000/docs)
+
+---
+
+## 🔧 常见问题
+
+### Q: 如何添加新页面？
+
+A: 参考 `.agent/workflows/add-page.md` 或直接使用 `/add-page` 工作流。
+
+### Q: UI 样式不符合规范怎么办？
+
+A: 检查 `.agent/instructions/component-rule.md`，所有颜色、圆角、间距都有标准定义。
+
+### Q: Sandpack 配置报错？
+
+A: **禁止直接修改** `components/DashboardPreview.tsx`，先阅读 `.spec/sandbox.md` 了解配置逻辑。
+
+---
+
+## 📄 许可证
+
+本项目为私有项目，未经授权不得使用或分发。
+
+---
+
+_Built with ❤️ using Next.js and AI-Driven Development_

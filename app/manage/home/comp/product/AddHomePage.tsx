@@ -130,70 +130,64 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
     {
       title: '名称',
       key: 'input_name',
+      required: true,
       render: (_, record) => {
         if (record.items) return null; // 节点行不显示表单
+        if (record.name) {
+          return <span className="text-gray-600 px-1">{record.name}</span>;
+        }
         return (
-          <div className="flex items-center gap-1">
-            <span className="text-red-500">*</span>
-            {record.name ? (
-              <span className="text-gray-600 px-1">{record.name}</span>
-            ) : (
-              <Input
-                placeholder="请输入"
-                className="h-8 text-[13px] border-gray-200 focus:border-primary"
-              />
-            )}
-          </div>
+          <Input
+            placeholder="请输入"
+            className="h-8 text-[13px] border-gray-200 focus:border-primary"
+          />
         );
       },
     },
+
     {
       title: '图表形式',
       key: 'chart_style',
       width: '140px',
+      required: true,
       render: (_, record) => {
         if (record.items) return null;
+        if (record.chartType) {
+          return <span className="text-gray-600 px-1">{record.chartType}</span>;
+        }
         return (
-          <div className="flex items-center gap-1">
-            <span className="text-red-500">*</span>
-            {record.chartType ? (
-              <span className="text-gray-600 px-1">{record.chartType}</span>
-            ) : (
-              <Select>
-                <SelectTrigger className="h-8 text-[13px] border-gray-200">
-                  <SelectValue placeholder="请选择" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bar">柱状图</SelectItem>
-                  <SelectItem value="line">折线图</SelectItem>
-                  <SelectItem value="pie">饼图</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          <Select>
+            <SelectTrigger className="h-8 text-[13px] border-gray-200">
+              <SelectValue placeholder="请选择" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bar">柱状图</SelectItem>
+              <SelectItem value="line">折线图</SelectItem>
+              <SelectItem value="pie">饼图</SelectItem>
+            </SelectContent>
+          </Select>
         );
       },
     },
+
     {
       title: '描述',
       key: 'description',
+      required: true,
       render: (_, record) => {
         if (record.items) return null;
+        if (record.description) {
+          return <span className="text-gray-600 px-1 truncate">{record.description}</span>;
+        }
         return (
-          <div className="flex items-center gap-1">
-            <span className="text-red-500">*</span>
-            {record.description ? (
-              <span className="text-gray-600 px-1 truncate">{record.description}</span>
-            ) : (
-              <Input
-                placeholder="请输入"
-                className="h-8 text-[13px] border-gray-200 focus:border-primary"
-              />
-            )}
-          </div>
+          <Input
+            placeholder="请输入"
+            className="h-8 text-[13px] border-gray-200 focus:border-primary"
+          />
         );
       },
     },
+
     {
       title: '关注指标',
       dataIndex: 'metric',
