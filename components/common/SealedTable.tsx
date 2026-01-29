@@ -55,10 +55,7 @@ const STYLES = {
 // Checkbox 通用样式
 const CHECKBOX_CLASS = cn(
   'w-4 h-4 shrink-0 cursor-pointer transition-none shadow-none',
-  `border-[${STYLES.borderGray}]`,
-  `data-[state=checked]:border-[${STYLES.primary}]`,
-  `data-[state=checked]:bg-[${STYLES.primary}]`,
-  `hover:border-[${STYLES.primary}]`
+  'border-[#dcdfe6] data-[state=checked]:border-[#306EFD] data-[state=checked]:bg-[#306EFD] data-[state=indeterminate]:border-[#306EFD] data-[state=indeterminate]:bg-[#306EFD] hover:border-[#306EFD]'
 );
 
 // ====================
