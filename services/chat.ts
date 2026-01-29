@@ -34,6 +34,13 @@ export const chatService = {
     return request.upload('/api/datasets', formData);
   },
 
+  /**
+   * Get artifact details
+   */
+  getArtifact: (artifactId: string) => {
+    return request.get(`/api/artifacts/${artifactId}`);
+  },
+
   testHealth: () => {
     return request.get('/health');
   }

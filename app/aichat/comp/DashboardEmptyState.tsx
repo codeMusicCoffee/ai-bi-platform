@@ -1,6 +1,11 @@
-import { LayoutDashboard } from 'lucide-react';
+// 暂时注释：组件内容已禁用，返回 null，让沙箱直接显示默认预览页面
+// import { LayoutDashboard } from 'lucide-react';
 
 export default function DashboardEmptyState() {
+  // 新实现：暂时返回 null，不渲染任何内容
+  return null;
+
+  /* 原实现：保留以便后续恢复
   return (
     <div className="h-full w-full flex items-center justify-center bg-gray-50/50">
       <div className="text-center text-gray-400">
@@ -14,4 +19,5 @@ export default function DashboardEmptyState() {
       </div>
     </div>
   );
+  */
 }

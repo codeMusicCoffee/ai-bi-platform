@@ -190,7 +190,13 @@ export function LifeCycleTab({ productId }: LifeCycleTabProps) {
       />
 
       {/* 生成看板弹窗 */}
-      <AddBoard open={isAddBoardOpen} onOpenChange={setIsAddBoardOpen} productId={productId} />
+      <AddBoard
+        open={isAddBoardOpen}
+        onOpenChange={setIsAddBoardOpen}
+        productId={productId}
+        lifecycleId={activeNodeId || undefined}
+        moduleConfigIds={selectedRowKeys}
+      />
     </Card>
   );
 }

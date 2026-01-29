@@ -1,28 +1,49 @@
-"use client";
+'use client';
 
 import {
   SandpackCodeEditor,
   SandpackPreview,
   SandpackProvider,
-} from "@codesandbox/sandpack-react";
-import { githubLight } from "@codesandbox/sandpack-themes";
-import { FileCode, Loader2, Play, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+  useSandpack,
+} from '@codesandbox/sandpack-react';
+import { githubLight } from '@codesandbox/sandpack-themes';
+import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 // 导入进度信息类型
-import type { ProgressInfo } from "./AiChat";
-import DashboardEmptyState from "./DashboardEmptyState";
+import type { ProgressInfo } from './AiChat';
 
-type ViewMode = "preview" | "code";
+// 新实现：监听沙箱加载完成的内部组件
+function SandpackReadyListener({ onReady }: { onReady?: () => void }) {
+  const { listen } = useSandpack();
+  const hasTriggered = useRef(false);
+
+  useEffect(() => {
+    const stopListening = listen((msg) => {
+      // 当 bundler 完成编译并渲染时触发
+      if (msg.type === 'done' && !hasTriggered.current) {
+        hasTriggered.current = true;
+        console.log('🎉 [SandpackReadyListener] 沙箱加载完成');
+        onReady?.();
+      }
+    });
+
+    return () => stopListening();
+  }, [listen, onReady]);
+
+  return null;
+}
+
+type ViewMode = 'preview' | 'code';
 
 function normalizePath(path: string) {
-  return path.startsWith("/") ? path : `/${path.replace(/^\.\//, "")}`;
+  return path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
 }
 
 function makeSignature(files: Record<string, string>) {
   const entries = Object.entries(files)
     .map(([p, c]) => [normalizePath(p), c] as const)
     .sort((a, b) => a[0].localeCompare(b[0]));
-  return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join("\n@@\n");
+  return entries.map(([p, c]) => `${p}::${c.length}::${c}`).join('\n@@\n');
 }
 
 // 支持多文件 artifact 和进度信息
@@ -33,6 +54,7 @@ export default function DashboardPreview({
   isFullScreen,
   progress,
   chatInit,
+  onSandpackReady,
 }: {
   files: Record<string, string>;
   isLoading?: boolean;
@@ -40,8 +62,10 @@ export default function DashboardPreview({
   isFullScreen?: boolean;
   progress?: ProgressInfo | null;
   chatInit?: boolean;
+  // 新增：沙箱加载完成时的回调
+  onSandpackReady?: () => void;
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("preview");
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [refreshKey, setRefreshKey] = useState(0);
 
   // 🔧 修复：filesKey 需要考虑文件内容变化，而不仅是文件名
@@ -53,7 +77,7 @@ export default function DashboardPreview({
   // 还原正常的 sandpackFiles 逻辑
   const sandpackFiles = useMemo(() => {
     const defaultFiles: Record<string, string> = {
-      "/App.tsx": `import React from 'react';
+      '/App.tsx': `import React from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
 
 export default function App() { 
@@ -92,7 +116,7 @@ export default function App() {
     </div>
   ) 
 }`,
-      "/index.tsx": `import React, { StrictMode } from "react";
+      '/index.tsx': `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
@@ -102,7 +126,7 @@ root.render(
     <App />
   </StrictMode>
 );`,
-      "/public/index.html": `<!DOCTYPE html>
+      '/public/index.html': `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -117,39 +141,44 @@ root.render(
 
     if (hasFiles && files) {
       Object.entries(files).forEach(([path, code]) => {
-        const normalizedPath = path.startsWith("/")
-          ? path
-          : `/${path.replace(/^\.\//, "")}`;
+        const normalizedPath = path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`;
         defaultFiles[normalizedPath] = code;
       });
     }
+    // 🔍 调试日志：确认 sandpackFiles 是否正确包含了新文件
+    console.log('🔍 [DashboardPreview] sandpackFiles computed:', {
+      hasFiles,
+      inputFileKeys: Object.keys(files ?? {}),
+      outputFileKeys: Object.keys(defaultFiles),
+      hasAppTsxOverride: files && Object.keys(files).includes('/App.tsx'),
+    });
     return defaultFiles;
   }, [hasFiles, filesKey, files]);
 
   const dependencies = {
-    react: "18.3.1",
-    "react-dom": "18.3.1",
-    recharts: "3.6.0",
-    "lucide-react": "0.400.0",
-    "framer-motion": "11.0.3",
-    clsx: "2.1.1",
-    "tailwind-merge": "2.5.2",
-    "react-is": "18.3.1",
-    "date-fns": "3.6.0",
+    react: '18.3.1',
+    'react-dom': '18.3.1',
+    recharts: '3.6.0',
+    'lucide-react': '0.400.0',
+    'framer-motion': '11.0.3',
+    clsx: '2.1.1',
+    'tailwind-merge': '2.5.2',
+    'react-is': '18.3.1',
+    'date-fns': '3.6.0',
   };
   // 稳定 customSetup 对象
   const customSetup = useMemo(
     () => ({
       // 1. 强制配置 npm 镜像源为淘宝源
-      npmRegistries: [
-        {
-          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-          enabledScopes: [],
-          limitToScopes: false,
-          registryUrl: "https://registry.npmmirror.com/",
-          proxyEnabled: false,
-        },
-      ],
+      // npmRegistries: [
+      //   {
+      //     // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
+      //     enabledScopes: [],
+      //     limitToScopes: false,
+      //     registryUrl: 'https://registry.npmmirror.com/',
+      //     proxyEnabled: false,
+      //   },
+      // ],
       dependencies,
     }),
     []
@@ -157,8 +186,8 @@ root.render(
 
   const options = useMemo(
     () => ({
-      externalResources: ["https://cdn.tailwindcss.com"],
-      recompileMode: "delayed" as const,
+      externalResources: ['https://cdn.tailwindcss.com'],
+      recompileMode: 'delayed' as const,
       recompileDelay: 500,
       // 使用自定义 bundler URL 可以避免遥测请求（可选）
       // bundlerURL: 'https://sandpack-bundler.codesandbox.io',
@@ -181,52 +210,46 @@ root.render(
 
   // 🔧 关键修复：监听 refreshId 变化，触发 SandpackProvider 重新挂载
   useEffect(() => {
-    // 跳过首次渲染
+    // 跳过首次渲染（当前值与 ref 相同说明是首次）
     if (prevRefreshIdRef.current === refreshId) {
       return;
     }
 
-    // 只有在 refreshId 从非 0 变化时才触发（跳过首次初始化）
-    if (
-      prevRefreshIdRef.current !== undefined &&
-      prevRefreshIdRef.current !== 0
-    ) {
-      console.log(
-        "🔄 [DashboardPreview] refreshId changed, incrementing previewKey"
-      );
-      console.log("  - Previous refreshId:", prevRefreshIdRef.current);
-      console.log("  - Current refreshId:", refreshId);
-      setPreviewKey((k) => k + 1);
-    }
+    // 新实现：只要 refreshId 变化就触发刷新（包括从 0→1）
+    // 原条件 `prevRefreshIdRef.current !== 0` 导致首次加载数据后不触发刷新
+    console.log('🔄 [DashboardPreview] refreshId changed, incrementing previewKey');
+    console.log('  - Previous refreshId:', prevRefreshIdRef.current);
+    console.log('  - Current refreshId:', refreshId);
+    setPreviewKey((k) => k + 1);
 
     prevRefreshIdRef.current = refreshId;
   }, [refreshId]);
   return (
     <div
       className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
-        isFullScreen ? "fixed inset-0 z-50 border-0 rounded-none" : ""
+        isFullScreen ? 'fixed inset-0 z-50 border-0 rounded-none' : ''
       }`}
     >
       {/* 自定义 Tab 切换按钮 - 全屏模式下隐藏 */}
       {!isFullScreen && (
         <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
           <button
-            onClick={() => setViewMode("preview")}
+            onClick={() => setViewMode('preview')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === "preview"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              viewMode === 'preview'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
             }`}
           >
             <Play className="w-4 h-4" />
             Preview
           </button>
           <button
-            onClick={() => setViewMode("code")}
+            onClick={() => setViewMode('code')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === "code"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              viewMode === 'code'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
             }`}
           >
             <FileCode className="w-4 h-4" />
@@ -235,7 +258,7 @@ root.render(
 
           {/* 强制刷新按钮 - 给右侧的全屏按钮留出位置 (mr-12) */}
           <button
-            onClick={() => setRefreshKey((k) => k + 1)}
+            onClick={() => setPreviewKey((k) => k + 1)}
             className="ml-auto mr-12 flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
             title="强制重新加载预览"
           >
@@ -246,6 +269,7 @@ root.render(
       )}
 
       <div className="flex-1 min-h-0 relative">
+        {/* 关键修复：key 使用 previewKey、hasFiles 和文件数量的组合，确保文件变化时沙箱重新挂载 */}
         <SandpackProvider
           template="react-ts"
           theme={githubLight}
@@ -253,27 +277,29 @@ root.render(
           customSetup={customSetup}
           options={options}
         >
+          {/* 新增：监听沙箱加载完成事件 */}
+          <SandpackReadyListener onReady={onSandpackReady} />
+
           {/* 预览视图：始终显示，Loading 只是 Overlay */}
           <div
             className={`w-full h-full absolute inset-0 bg-white ${
-              viewMode === "preview"
-                ? "z-10"
-                : "z-0 opacity-0 pointer-events-none"
+              viewMode === 'preview' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
             }`}
           >
             <SandpackPreview
               showNavigator={false}
               showRefreshButton={true}
               showOpenInCodeSandbox={false}
-              style={{ height: "100%" }}
+              style={{ height: '100%' }}
             />
 
-            {/* 当处于初始状态时显示空状态占位 */}
+            {/* 新实现：暂时注释空状态遮罩层，无 sessionId 时直接展示沙箱默认预览页面
             {chatInit && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white">
                 <DashboardEmptyState />
               </div>
             )}
+            */}
 
             {/* 统一 Loading 遮罩层：满足用户看到详细进度的需求，同时保持底层 Sandpack 不卸载 */}
 
@@ -293,16 +319,12 @@ root.render(
                   <p className="text-xs text-indigo-500 mt-2 font-medium">
                     正在生成第 {progress.current}/{progress.total} 个组件
                     {progress.component && (
-                      <span className="ml-1 text-gray-400">
-                        ({progress.component})
-                      </span>
+                      <span className="ml-1 text-gray-400">({progress.component})</span>
                     )}
                   </p>
                 )}
 
-                <p className="text-xs text-gray-400 mt-1">
-                  您可以切换到 Code 标签查看实时进度
-                </p>
+                <p className="text-xs text-gray-400 mt-1">您可以切换到 Code 标签查看实时进度</p>
               </div>
             )}
           </div>
@@ -310,7 +332,7 @@ root.render(
           {/* 代码视图：始终显示编辑器，方便查看流式生成 */}
           <div
             className={`w-full h-full absolute inset-0 bg-white ${
-              viewMode === "code" ? "z-10" : "z-0 opacity-0 pointer-events-none"
+              viewMode === 'code' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
             }`}
           >
             {isLoading ? (
@@ -332,7 +354,7 @@ root.render(
                 showTabs={true}
                 showInlineErrors={true}
                 wrapContent={true}
-                style={{ height: "100%" }}
+                style={{ height: '100%' }}
                 readOnly={false}
               />
             )}

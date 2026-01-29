@@ -141,7 +141,6 @@ ai-bi-platform/
 
 - **禁止擅自修改 `components/DashboardPreview.tsx`**：Sandpack 配置已冻结，需先阅读 `.spec/sandbox.md`。
 - **所有 UI 必须符合 `component-rule.md`**：颜色、圆角、间距、按钮样式必须一一对应。
-- **API 域名**: 后端接口位于 `http://192.168.110.29:8000`，请勿硬编码其他地址。
 - **最小侵入原则**: 修改代码时必须保留原逻辑，禁止"顺手重构"。
 
 ---

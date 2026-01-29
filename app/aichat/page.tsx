@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useChatStore } from '@/store/use-chat-store';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AiChat, { ProgressInfo } from './comp/AiChat';
 import DashboardPreview from './comp/DashboardPreview';
 import FullScreenToggle from './comp/FullScreenToggle';
@@ -9,16 +11,51 @@ export default function AiChatPage() {
   const [userInput, setUserInput] = useState('');
   const [refreshId, setRefreshId] = useState(0);
 
+  // 新实现：解析 URL 参数中的 sessionId 和 artifactId
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get('sessionId');
+  const artifactIdParam = searchParams.get('artifactId');
+  const setSessionId = useChatStore((state) => state.setSessionId);
+
+  useEffect(() => {
+    if (sessionIdParam) {
+      console.log('🔗 [page.tsx] session id from url:', sessionIdParam);
+      setSessionId(sessionIdParam);
+    }
+  }, [sessionIdParam, setSessionId]);
+
   // 新实现：支持多文件 artifact
   const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>({});
   const [streamingFiles, setStreamingFiles] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  // 新增：追踪 session 数据是否已获取完成，用于区分"初次进入未加载"和"加载完成但无数据"
+  const [hasFetchedSession, setHasFetchedSession] = useState(false);
 
   const [error, setError] = useState<string>('');
   const [isFullScreen, setIsFullScreen] = useState(false);
   // 新增：组件生成进度信息
   const [progress, setProgress] = useState<ProgressInfo | null>(null);
+
+  // 新实现：双条件逻辑 - 沙箱就绪 + 数据就绪才更新预览
+  const [sandpackReady, setSandpackReady] = useState(false);
+  // 待渲染的文件（数据已获取但等待沙箱就绪）
+  const pendingFilesRef = useRef<Record<string, string> | null>(null);
+
+  // 新实现：当沙箱就绪且有待渲染文件时，执行实际更新
+  const flushPendingFiles = useCallback(() => {
+    if (sandpackReady && pendingFilesRef.current) {
+      console.log('🚀 [page.tsx] 沙箱已就绪，开始渲染 artifact 内容');
+      setGeneratedFiles(pendingFilesRef.current);
+      setRefreshId((prev) => prev + 1);
+      pendingFilesRef.current = null;
+    }
+  }, [sandpackReady]);
+
+  // 监听 sandpackReady 变化，尝试刷新待渲染文件
+  useEffect(() => {
+    flushPendingFiles();
+  }, [sandpackReady, flushPendingFiles]);
 
   return (
     <main className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
@@ -30,12 +67,13 @@ export default function AiChatPage() {
       >
         <div className="h-full w-full">
           <AiChat
+            initialArtifactId={artifactIdParam}
             onCodeUpdate={(files) => {
               console.log('📦 [page.tsx] onCodeUpdate received:', {
                 fileCount: Object.keys(files).length,
                 fileKeys: Object.keys(files),
               });
-              setGeneratedFiles(files);
+              // 新实现：流式更新时直接显示（用户主动发起的对话）
               setStreamingFiles(files);
             }}
             onCodeEnd={() => {
@@ -46,6 +84,17 @@ export default function AiChatPage() {
             }}
             onStatusChange={(loading) => setIsChatLoading(loading)}
             onProgressUpdate={(p) => setProgress(p)}
+            // 新增：session 数据获取完成后通知父组件
+            onFetchComplete={() => setHasFetchedSession(true)}
+            // 新实现：artifact 数据获取完成时，存入待渲染队列
+            onArtifactReady={(files) => {
+              console.log('📦 [page.tsx] onArtifactReady - 数据已获取，等待沙箱就绪');
+              pendingFilesRef.current = files;
+              // 如果沙箱已经就绪，立即刷新
+              if (sandpackReady) {
+                flushPendingFiles();
+              }
+            }}
           />
         </div>
       </div>
@@ -61,8 +110,17 @@ export default function AiChatPage() {
             isFullScreen={isFullScreen}
             progress={progress}
             chatInit={
-              Object.keys(generatedFiles).length === 0 && Object.keys(streamingFiles).length === 0
+              // 新实现：只有在「无 sessionId 或已完成加载」且「无文件」时才显示空状态
+              // 当有 sessionId 但还未加载完成时，让沙箱显示默认的加载动画，而非空状态
+              (!sessionIdParam || hasFetchedSession) &&
+              Object.keys(generatedFiles).length === 0 &&
+              Object.keys(streamingFiles).length === 0
             }
+            // 新增：沙箱加载完成回调
+            onSandpackReady={() => {
+              console.log('🎉 [page.tsx] 沙箱已就绪');
+              setSandpackReady(true);
+            }}
           />
         </div>
 
