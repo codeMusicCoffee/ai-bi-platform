@@ -170,15 +170,15 @@ root.render(
   const customSetup = useMemo(
     () => ({
       // 1. 强制配置 npm 镜像源为淘宝源
-      // npmRegistries: [
-      //   {
-      //     // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
-      //     enabledScopes: [],
-      //     limitToScopes: false,
-      //     registryUrl: 'https://registry.npmmirror.com/',
-      //     proxyEnabled: false,
-      //   },
-      // ],
+      npmRegistries: [
+        {
+          // 移除 enabledScopes，使其全局生效，确保所有包都走镜像源
+          enabledScopes: [],
+          limitToScopes: false,
+          registryUrl: 'https://registry.npmmirror.com/',
+          proxyEnabled: false,
+        },
+      ],
       dependencies,
     }),
     []
