@@ -43,6 +43,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
   const [lifecycles, setLifecycles] = useState<any[]>([]);
   const [milestoneMode, setMilestoneMode] = useState<'create' | 'edit'>('create');
   const [editingMilestone, setEditingMilestone] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductFormValues>({
     name: '',
     abv: '',
@@ -79,6 +80,9 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
             delistingDate: p.delisting_date || '',
             image_url: p.image_url || '',
           });
+          if (p.session_id) {
+            setSessionId(p.session_id);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch product:', error);
@@ -217,7 +221,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                   <div className="w-[3px] h-4 bg-[#306EFD] rounded-full" />
                   <CardTitle className="text-lg font-bold text-gray-800">产品信息</CardTitle>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 justify-end min-w-[140px]">
+                <div className="flex items-center gap-3 shrink-0 justify-end min-w-[220px]">
                   {isEditing ? (
                     <div className="flex items-center gap-3 animate-in fade-in duration-200">
                       <Button
@@ -236,14 +240,16 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      type="button"
-                      onClick={() => setIsEditing(true)}
-                      className="  text-white   shadow-sm shadow-blue-100 flex items-center gap-2 "
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                      <span>编辑</span>
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="  text-white   shadow-sm shadow-blue-100 flex items-center gap-2 "
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        <span>编辑</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>

@@ -7,7 +7,7 @@ import {
   useSandpack,
 } from '@codesandbox/sandpack-react';
 import { githubLight } from '@codesandbox/sandpack-themes';
-import { FileCode, Loader2, Play, RefreshCw } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 // 导入进度信息类型
 import type { ProgressInfo } from './AiChat';
@@ -55,6 +55,9 @@ export default function DashboardPreview({
   progress,
   chatInit,
   onSandpackReady,
+  viewMode = 'preview',
+  setViewMode,
+  onRefresh,
 }: {
   files: Record<string, string>;
   isLoading?: boolean;
@@ -64,10 +67,10 @@ export default function DashboardPreview({
   chatInit?: boolean;
   // 新增：沙箱加载完成时的回调
   onSandpackReady?: () => void;
+  viewMode?: ViewMode;
+  setViewMode?: (mode: ViewMode) => void;
+  onRefresh?: () => void;
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>('preview');
-  const [refreshKey, setRefreshKey] = useState(0);
-
   // 🔧 修复：filesKey 需要考虑文件内容变化，而不仅是文件名
   // 否则当 artifact_delta 更新文件内容时，filesKey 不变，sandpackFiles 不会重新计算
   const filesKey = useMemo(() => makeSignature(files ?? {}), [files]);
@@ -224,50 +227,20 @@ root.render(
 
     prevRefreshIdRef.current = refreshId;
   }, [refreshId]);
+
+  // 暴露给外部的刷新接口
+  useEffect(() => {
+    if (onRefresh) {
+      setPreviewKey((k) => k + 1);
+    }
+  }, [onRefresh]);
+
   return (
     <div
       className={`w-full h-full border rounded-xl overflow-hidden shadow-sm flex flex-col bg-white transition-all duration-300 ${
         isFullScreen ? 'fixed inset-0 z-50 border-0 rounded-none' : ''
       }`}
     >
-      {/* 自定义 Tab 切换按钮 - 全屏模式下隐藏 */}
-      {!isFullScreen && (
-        <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setViewMode('preview')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'preview'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <Play className="w-4 h-4" />
-            Preview
-          </button>
-          <button
-            onClick={() => setViewMode('code')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              viewMode === 'code'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <FileCode className="w-4 h-4" />
-            Code
-          </button>
-
-          {/* 强制刷新按钮 - 给右侧的全屏按钮留出位置 (mr-12) */}
-          <button
-            onClick={() => setPreviewKey((k) => k + 1)}
-            className="ml-auto mr-12 flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all text-sm border border-transparent hover:border-gray-200"
-            title="强制重新加载预览"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline">刷新预览</span>
-          </button>
-        </div>
-      )}
-
       <div className="flex-1 min-h-0 relative">
         {/* 关键修复：key 使用 previewKey、hasFiles 和文件数量的组合，确保文件变化时沙箱重新挂载 */}
         <SandpackProvider

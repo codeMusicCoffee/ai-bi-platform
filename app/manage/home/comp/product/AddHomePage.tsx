@@ -1,5 +1,6 @@
 'use client';
 
+import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,9 +21,19 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
-import { Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useChatStore } from '@/store/use-chat-store';
+import { AlertCircle, Check, CheckCircle2, ChevronRight, ScrollText } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import * as z from 'zod';
+
+const homePageSchema = z.object({
+  name: z.string().min(1, '请输入首页名称'),
+  style_description: z.string().optional(),
+  extra_description: z.string().optional(),
+});
+
+type HomePageFormValues = z.infer<typeof homePageSchema>;
 
 interface ChartItem {
   id: string;
@@ -47,15 +58,50 @@ interface AddHomePageProps {
 
 export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps) {
   const [step, setStep] = useState<1 | 2>(1);
-  const [styleDescription, setStyleDescription] = useState('');
-  const [otherDescription, setOtherDescription] = useState('');
+  const [status, setStatus] = useState<'editing' | 'processing' | 'completed' | 'error'>('editing');
+
+  // 进度状态
+  const [progress, setProgress] = useState({
+    current: 0,
+    total: 0,
+    text: '准备中...',
+    files: [] as { path: string; status: 'generating' | 'success' | 'failed' }[],
+    logs: [] as string[],
+    summary: '',
+  });
+
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { sessionId } = useChatStore();
 
   const [nodes, setNodes] = useState<NodeGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  // 自动滚动日志
   useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [progress.logs]);
+
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setStatus('editing');
+      setSelectedRowKeys([]);
+      setCurrentSessionId(null);
+      setProgress({
+        current: 0,
+        total: 0,
+        text: '准备中...',
+        files: [],
+        logs: [],
+        summary: '',
+      });
+    }
+
     if (open && productId) {
       const fetchData = async () => {
         setLoading(true);
@@ -65,9 +111,9 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
             const mappedNodes: NodeGroup[] = res.data.items.map((item: any) => ({
               id: item.id,
               name: item.name,
-              items: (item.kanbans || []).map((kb: any) => ({
+              items: (item.node_datasets || []).map((kb: any) => ({
                 id: kb.id,
-                dataset: kb.dataset_id, // 暂用 dataset_id，如果有 dataset_name 可替换
+                dataset: kb.dataset_id,
                 name: kb.module_name,
                 chartType: kb.chart_style,
                 description: kb.description || '',
@@ -101,20 +147,146 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
     setStep(1);
   };
 
-  const handleConfirm = () => {
-    // Logic for confirmed generation
-    console.log('Generated with:', {
-      selectedKeys: selectedRowKeys,
-      styleDescription,
-      otherDescription,
+  const handleConfirm = async (values: HomePageFormValues) => {
+    // 从 selectedRowKeys 中分离生命周期ID和数据集ID
+    const lifecycle_ids = nodes
+      .filter((node) => selectedRowKeys.includes(node.id))
+      .map((node) => node.id);
+
+    const node_dataset_ids = nodes
+      .flatMap((node) => node.items || [])
+      .filter((item) => selectedRowKeys.includes(item.id))
+      .map((item) => item.id);
+
+    setStatus('processing');
+    setProgress({
+      current: 0,
+      total: 0,
+      text: '正在初始化...',
+      files: [],
+      logs: ['🚀 正在同步站点配置...'],
+      summary: '',
     });
-    onOpenChange(false);
-    setStep(1);
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      const response = await fetch(
+        `${baseUrl}/api/pm/products/${productId}/actions/generate-overall-kanban`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+          },
+          body: JSON.stringify({
+            name: values.name,
+            lifecycle_ids,
+            node_dataset_ids,
+            style_description: values.style_description,
+            extra_description: values.extra_description,
+            session_id: sessionId || '',
+            regenerate: false,
+            locale: 'zh-CN',
+            debug: false,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('无法读取响应流');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+
+          let jsonContent = trimmedLine;
+          if (trimmedLine.startsWith('data: ')) {
+            jsonContent = trimmedLine.slice(6);
+          }
+
+          if (jsonContent === '[DONE]') {
+            setStatus('completed');
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonContent);
+
+            switch (parsed.type) {
+              case 'session_id':
+                if (parsed.content) setCurrentSessionId(parsed.content);
+                break;
+              case 'thinking':
+                if (parsed.content) {
+                  const logMsg = parsed.content.trim();
+                  if (logMsg) {
+                    setProgress((prev) => ({
+                      ...prev,
+                      logs: [...prev.logs, logMsg],
+                      text: logMsg.split('\n')[0],
+                    }));
+                  }
+                }
+                break;
+              case 'progress':
+                const pContent =
+                  typeof parsed.content === 'string' ? JSON.parse(parsed.content) : parsed.content;
+                if (pContent) {
+                  setProgress((prev) => ({
+                    ...prev,
+                    current: pContent.current || prev.current,
+                    total: pContent.total || prev.total,
+                  }));
+                }
+                break;
+              case 'message':
+                setProgress((prev) => ({ ...prev, summary: parsed.content || '' }));
+                break;
+              case 'artifact_end':
+                setProgress((prev) => ({ ...prev, current: prev.total, text: '首页生成已完成' }));
+                break;
+            }
+          } catch (e) {
+            console.warn('解析流数据失败:', e, jsonContent);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to generate overall kanban:', error);
+      setStatus('error');
+      toast.error('生成失败: ' + error.message);
+    }
   };
 
   const handleClose = () => {
     onOpenChange(false);
-    setStep(1);
+    setTimeout(() => {
+      setStep(1);
+      setStatus('editing');
+      setSelectedRowKeys([]);
+      setCurrentSessionId(null);
+      setProgress({
+        current: 0,
+        total: 0,
+        text: '准备中...',
+        files: [],
+        logs: [],
+        summary: '',
+      });
+    }, 300);
   };
 
   const columns: SealedTableColumn<any>[] = [
@@ -197,6 +369,46 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
     },
   ];
 
+  const formFields: SealedFormFieldConfig<HomePageFormValues>[] = [
+    {
+      name: 'name',
+      label: '首页名称',
+      placeholder: '请输入首页名称',
+      required: true,
+      render: (field) => (
+        <Textarea
+          {...field}
+          placeholder="请输入首页名称"
+          className="min-h-[40px] h-[40px] resize-none border-gray-200 focus:border-primary text-[14px]"
+        />
+      ),
+    },
+    {
+      name: 'style_description',
+      label: '风格描述',
+      placeholder: '请输入风格描述',
+      render: (field) => (
+        <Textarea
+          {...field}
+          placeholder="请输入风格描述"
+          className="min-h-[120px] resize-none border-gray-200 focus:border-primary text-[14px]"
+        />
+      ),
+    },
+    {
+      name: 'extra_description',
+      label: '其他描述',
+      placeholder: '请输入其他需求描述',
+      render: (field) => (
+        <Textarea
+          {...field}
+          placeholder="请输入其他需求描述"
+          className="min-h-[120px] resize-none border-gray-200 focus:border-primary text-[14px]"
+        />
+      ),
+    },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-[1020px] p-0 overflow-hidden border-none rounded-[12px]">
@@ -253,79 +465,195 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
         </div>
 
         {/* Content Area */}
-        <div className="min-h-[400px]">
-          {step === 1 ? (
-            <div className="p-4">
-              <SealedTable
-                columns={columns}
-                data={nodes}
-                loading={loading}
-                childrenColumnName="items"
-                expandedRowKeys={expandedRowKeys}
-                onExpand={(expanded, record) => {
-                  setExpandedRowKeys((prev: string[]) =>
-                    expanded ? [...prev, record.id] : prev.filter((k: string) => k !== record.id)
-                  );
+        <div className="min-h-[450px] flex flex-col overflow-hidden">
+          {status === 'editing' ? (
+            step === 1 ? (
+              <>
+                <div className="flex-1 p-4 overflow-y-auto">
+                  <SealedTable
+                    columns={columns}
+                    data={nodes}
+                    loading={loading}
+                    childrenColumnName="items"
+                    expandedRowKeys={expandedRowKeys}
+                    onExpand={(expanded, record) => {
+                      setExpandedRowKeys((prev: string[]) =>
+                        expanded
+                          ? [...prev, record.id]
+                          : prev.filter((k: string) => k !== record.id)
+                      );
+                    }}
+                    selectedRowKeys={selectedRowKeys}
+                    onSelectionChange={setSelectedRowKeys}
+                    containerClassName="max-h-[450px]"
+                    stripe
+                  />
+                </div>
+                <DialogFooter className="px-6 py-4 bg-white border-t border-gray-100 gap-3">
+                  <Button
+                    onClick={handleClose}
+                    type="button"
+                    variant="outline"
+                    className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleNext}
+                    className="h-9 px-6 text-white shadow-none cursor-pointer"
+                  >
+                    下一步
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : (
+              <SealedForm
+                schema={homePageSchema}
+                fields={formFields}
+                onSubmit={handleConfirm}
+                defaultValues={{
+                  name: '',
+                  style_description: '',
+                  extra_description: '',
                 }}
-                selectedRowKeys={selectedRowKeys}
-                onSelectionChange={setSelectedRowKeys}
-                containerClassName="max-h-[450px]"
-                stripe
-              />
-            </div>
+                className="flex-1 flex flex-col h-full overflow-hidden"
+              >
+                {({ fields }) => (
+                  <>
+                    <div className="flex-1 px-8 py-6 overflow-y-auto">{fields}</div>
+                    <DialogFooter className="px-6 py-4 bg-white border-t border-gray-100 gap-3">
+                      <Button
+                        onClick={handlePrev}
+                        type="button"
+                        variant="outline"
+                        className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                      >
+                        上一步
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="h-9 px-6 text-white shadow-none cursor-pointer"
+                      >
+                        确定
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
+              </SealedForm>
+            )
           ) : (
-            <div className="px-8 py-6 space-y-6">
-              <div className="space-y-2">
-                <label className="text-[14px] font-medium text-gray-700">风格描述：</label>
-                <Textarea
-                  value={styleDescription}
-                  onChange={(e) => setStyleDescription(e.target.value)}
-                  placeholder="请输入"
-                  className="min-h-[140px] resize-none border-gray-200 focus:border-primary text-[14px]"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[14px] font-medium text-gray-700">其他描述：</label>
-                <Textarea
-                  value={otherDescription}
-                  onChange={(e) => setOtherDescription(e.target.value)}
-                  placeholder="请输入"
-                  className="min-h-[140px] resize-none border-gray-200 focus:border-primary text-[14px]"
-                />
+            <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[400px]">
+              <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
+                {status === 'processing' && (
+                  <div className="flex flex-col h-full">
+                    {/* Header with Progress */}
+                    <div className="flex items-center justify-between mb-8 px-4">
+                      <div className="flex flex-col">
+                        <h4 className="text-[20px] font-bold text-gray-800">
+                          正在生成首页看板
+                          {progress.total > 0 && (
+                            <span className="text-primary font-medium ml-2">
+                              [{progress.current}/{progress.total}]
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-[14px] text-gray-500 mt-1">
+                          {progress.text || '初始化环境...'}
+                        </p>
+                      </div>
+                      <div className="relative w-20 h-20">
+                        <svg className="w-full h-full" viewBox="0 0 100 100">
+                          <circle
+                            className="text-gray-100 stroke-current"
+                            strokeWidth="8"
+                            fill="transparent"
+                            r="40"
+                            cx="50"
+                            cy="50"
+                          />
+                          <circle
+                            className="text-primary stroke-current transition-all duration-500 ease-out"
+                            strokeWidth="8"
+                            strokeDasharray={`${progress.total > 0 ? Math.round((progress.current / progress.total) * 251.2) : 0}, 251.2`}
+                            strokeLinecap="round"
+                            fill="transparent"
+                            r="40"
+                            cx="50"
+                            cy="50"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center text-[16px] font-bold text-primary">
+                          {progress.total > 0
+                            ? Math.round((progress.current / progress.total) * 100)
+                            : 0}
+                          %
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logs Area */}
+                    <div className="flex-1 flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden min-h-[200px]">
+                      <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-2">
+                        <ScrollText className="w-4 h-4 text-gray-400" />
+                        <span className="text-[12px] font-bold text-gray-600">生成详情与日志</span>
+                      </div>
+                      <div
+                        ref={scrollRef}
+                        className="flex-1 p-4 overflow-y-auto space-y-2 font-mono text-[12px] text-gray-600"
+                      >
+                        {progress.logs.map((log, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2 animate-in slide-in-from-left-2 fade-in duration-300"
+                          >
+                            <ChevronRight className="w-3 h-3 mt-1 text-gray-300 flex-none" />
+                            <span className="leading-relaxed">{log}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {status === 'completed' && (
+                  <div className="flex flex-col items-center text-center py-8">
+                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+                      <CheckCircle2 className="w-10 h-10 text-green-500" />
+                    </div>
+                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">生成成功</h4>
+                    <div className="max-w-[400px] bg-gray-50 p-4 rounded-xl border border-gray-100 mb-8 text-[13px] text-gray-600">
+                      {progress.summary ||
+                        '首页看板已根据所选模块成功生成，您可以点击下方按钮进入预览。'}
+                    </div>
+                    <Button
+                      onClick={() => {
+                        window.open(`/previewpage?sessionId=${currentSessionId || ''}`, '_blank');
+                      }}
+                      className="bg-[#306EFD] hover:bg-[#285ad4] text-white px-8 h-10 rounded-[6px]"
+                    >
+                      去预览
+                    </Button>
+                  </div>
+                )}
+
+                {status === 'error' && (
+                  <div className="flex flex-col items-center text-center py-8">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                      <AlertCircle className="w-10 h-10 text-red-500" />
+                    </div>
+                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">生成失败</h4>
+                    <p className="text-[14px] text-gray-500 mb-8">
+                      执行过程中遇到了问题，请尝试重新生成或检查网络配置。
+                    </p>
+                    <Button onClick={() => setStatus('editing')} variant="outline" className="px-8">
+                      重试
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
-
-        <DialogFooter className="px-6 py-4 bg-white border-t border-gray-100 gap-3">
-          <Button
-            onClick={handleClose}
-            type="button"
-            variant="outline"
-            className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
-          >
-            取消
-          </Button>
-          {step === 1 ? (
-            <Button onClick={handleNext} className="h-9 px-6 text-white shadow-none">
-              下一步
-            </Button>
-          ) : (
-            <>
-              <Button
-                onClick={handlePrev}
-                type="button"
-                variant="outline"
-                className="h-9 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
-              >
-                上一步
-              </Button>
-              <Button onClick={handleConfirm} className="h-9 px-6 text-white shadow-none">
-                确定
-              </Button>
-            </>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

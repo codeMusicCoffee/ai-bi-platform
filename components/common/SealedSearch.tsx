@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { XCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export type SearchFieldType = 'input' | 'select';
@@ -21,6 +22,7 @@ export interface SearchFieldConfig {
   placeholder?: string;
   options?: { label: string; value: string }[];
   width?: string;
+  clearable?: boolean;
 }
 
 interface SealedSearchProps {
@@ -49,11 +51,13 @@ export function SealedSearch({
   const [values, setValues] = useState<Record<string, any>>(initialValues);
 
   const handleFieldChange = (name: string, value: any) => {
-    setValues((prev) => ({ ...prev, [name]: value }));
+    const newValues = { ...values, [name]: value };
+    setValues(newValues);
+    return newValues;
   };
 
-  const handleSearch = () => {
-    onSearch(values);
+  const handleSearch = (currentValues = values) => {
+    onSearch(currentValues);
   };
 
   const handleReset = () => {
@@ -68,35 +72,74 @@ export function SealedSearch({
     onReset?.();
   };
 
+  const handleClear = (name: string) => {
+    const newValues = handleFieldChange(name, '');
+    handleSearch(newValues);
+  };
+
   return (
     <div className={cn('flex flex-wrap items-center gap-x-3', className)}>
       {fields.map((field) => (
         <div key={field.name} className="flex items-center gap-2">
           <span className="text-[14px] text-gray-600 whitespace-nowrap">{field.label}:</span>
-          <div style={{ width: field.width || '192px' }}>
+          <div style={{ width: field.width || '192px' }} className="relative group">
             {field.type === 'input' ? (
-              <Input
-                placeholder={field.placeholder}
-                value={values[field.name] || ''}
-                onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                className=" border-gray-200 focus:border-[#306EFD] focus:ring-[#306EFD]/10"
-              />
+              <>
+                <Input
+                  placeholder={field.placeholder}
+                  value={values[field.name] || ''}
+                  onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                  className={cn(
+                    'border-gray-200 focus:border-[#306EFD] focus:ring-[#306EFD]/10',
+                    field.clearable && 'pr-8'
+                  )}
+                />
+                {field.clearable && values[field.name] && (
+                  <XCircle
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleClear(field.name)}
+                  />
+                )}
+              </>
             ) : (
-              <Select
-                value={values[field.name] || ''}
-                onValueChange={(val) => handleFieldChange(field.name, val)}
-              >
-                <SelectTrigger className=" border-gray-200 focus:border-[#306EFD] focus:ring-[#306EFD]/10">
-                  <SelectValue placeholder={field.placeholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {field.options?.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select
+                  value={values[field.name] || ''}
+                  onValueChange={(val) => {
+                    handleFieldChange(field.name, val);
+                  }}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      'border-gray-200 focus:border-[#306EFD] focus:ring-[#306EFD]/10',
+                      field.clearable && 'pr-11 [&>svg]:absolute [&>svg]:right-3'
+                    )}
+                  >
+                    <SelectValue placeholder={field.placeholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.clearable && values[field.name] && (
+                  <XCircle
+                    className="absolute right-7 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClear(field.name);
+                    }}
+                  />
+                )}
+              </>
             )}
           </div>
         </div>

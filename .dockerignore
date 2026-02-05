@@ -20,9 +20,9 @@ coverage
 # 日志
 npm-debug.log*
 yarn-debug.log*
-pnpm-debug.log*
+pnpm-debug.log* 
 
-# IDE
+# IDE 
 .idea
 .vscode
 .cursor

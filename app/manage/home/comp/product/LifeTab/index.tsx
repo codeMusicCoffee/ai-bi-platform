@@ -55,6 +55,11 @@ export function LifeCycleTab({ productId }: LifeCycleTabProps) {
     isConfigOpen,
     isDeleteOpen: isBoardDeleteOpen,
     isAddBoardOpen,
+    page,
+    pageSize,
+    total,
+    setPage,
+    setPageSize,
     setSelectedRowKeys,
     setIsConfigOpen,
     setIsDeleteOpen: setIsBoardDeleteOpen,
@@ -158,6 +163,14 @@ export function LifeCycleTab({ productId }: LifeCycleTabProps) {
           tableData={tableData}
           loading={boardLoading}
           selectedRowKeys={selectedRowKeys}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
           onSelectionChange={setSelectedRowKeys}
           onAddBoard={openBoardCreate}
           onEditBoard={openBoardEdit}
