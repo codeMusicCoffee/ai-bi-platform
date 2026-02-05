@@ -9,6 +9,11 @@ export function BoardConfigSection({
   tableData,
   loading,
   selectedRowKeys,
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
   onSelectionChange,
   onAddBoard,
   onEditBoard,
@@ -98,6 +103,18 @@ export function BoardConfigSection({
         headerClassName="bg-[#f8f9fb] border-none"
         selectedRowKeys={selectedRowKeys}
         onSelectionChange={onSelectionChange}
+        pagination={{
+          current: page || 1,
+          pageSize: pageSize || 10,
+          total: total || 0,
+          onChange: (p, ps) => {
+            if (ps !== pageSize) {
+              onPageSizeChange?.(ps);
+            } else {
+              onPageChange?.(p);
+            }
+          },
+        }}
       />
     </div>
   );

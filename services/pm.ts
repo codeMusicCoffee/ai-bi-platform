@@ -109,6 +109,8 @@ export const pmService = {
   // Kanbans (看板配置)
   getBoards: (lifecycleId: string) =>
     request.get<any[]>(`/api/pm/kanbans/`, { lifecycle_id: lifecycleId }),
+  getBoardsByProduct: (productId: string, params?: any) =>
+    request.get<any>(`/api/pm/products/${productId}/dashboards`, params),
   createBoard: (data: {
     lifecycle_id: string;
     dataset_id: string;
@@ -128,4 +130,16 @@ export const pmService = {
   ) => request.put<any>(`/api/pm/kanbans/${id}`, data, { showSuccessMsg: true }),
   deleteBoard: (id: string) =>
     request.delete(`/api/pm/kanbans/${id}`, {}, { showSuccessMsg: true }),
+
+  // Node Datasets (节点数据集配置)
+  getNodeDatasetsByProduct: (productId: string, params?: any) =>
+    request.get<any>(`/api/pm/node-datasets/product/${productId}`, params),
+  getNodeDatasets: (lifecycleId: string, params?: any) =>
+    request.get<any>(`/api/pm/node-datasets/lifecycle/${lifecycleId}`, params),
+  createNodeDataset: (data: any) =>
+    request.post<any>('/api/pm/node-datasets', data, { showSuccessMsg: true }),
+  updateNodeDataset: (id: string, data: any) =>
+    request.put<any>(`/api/pm/node-datasets/${id}`, data, { showSuccessMsg: true }),
+  deleteNodeDataset: (id: string) =>
+    request.delete(`/api/pm/node-datasets/${id}`, {}, { showSuccessMsg: true }),
 };

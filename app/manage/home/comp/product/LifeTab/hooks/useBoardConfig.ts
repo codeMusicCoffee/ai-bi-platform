@@ -12,6 +12,9 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
   const [tableData, setTableData] = useState<DashboardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   // 弹窗状态
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -22,12 +25,17 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
   const [mode, setMode] = useState<'create' | 'edit'>('create');
 
   // 获取看板数据
-  const fetchBoards = useCallback(async (lifecycleId: string) => {
+  const fetchBoards = useCallback(async (lifecycleId: string, currentPage = page) => {
     try {
       setLoading(true);
-      const res = await pmService.getBoards(lifecycleId);
+      const res = await pmService.getNodeDatasets(lifecycleId, {
+        page: currentPage,
+        pageSize: pageSize,
+      });
       const data = res.data as any;
       const rawData = Array.isArray(data) ? data : data?.items || data?.list || [];
+      const totalCount = data?.total || rawData.length;
+
       setTableData(
         rawData.map((item: any) => ({
           id: item.id,
@@ -39,19 +47,21 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
           dataset_fields: item.dataset_fields || [],
         }))
       );
+      setTotal(totalCount);
+      setPage(currentPage);
     } catch (error) {
       console.error('Failed to fetch boards:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
-  // 监听节点变化
+  // 监听节点或分页变化
   useEffect(() => {
     if (activeNodeId) {
-      fetchBoards(activeNodeId);
+      fetchBoards(activeNodeId, page);
     }
-  }, [activeNodeId, fetchBoards]);
+  }, [activeNodeId, page, pageSize, fetchBoards]);
 
   // 打开新增弹窗
   const openCreate = useCallback(() => {
@@ -77,7 +87,7 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
   const confirmDelete = useCallback(async () => {
     if (!boardToDelete || !activeNodeId) return;
     try {
-      await pmService.deleteBoard(boardToDelete);
+      await pmService.deleteNodeDataset(boardToDelete);
       await fetchBoards(activeNodeId);
       setIsDeleteOpen(false);
       setBoardToDelete(null);
@@ -92,12 +102,12 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
       if (!activeNodeId) return;
       try {
         if (mode === 'create') {
-          await pmService.createBoard({
+          await pmService.createNodeDataset({
             lifecycle_id: activeNodeId,
             ...values,
           });
         } else if (currentBoard) {
-          await pmService.updateBoard(currentBoard.id, values);
+          await pmService.updateNodeDataset(currentBoard.id, values);
         }
         await fetchBoards(activeNodeId);
         setIsConfigOpen(false);
@@ -116,6 +126,9 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
     selectedRowKeys,
     currentBoard,
     mode,
+    page,
+    pageSize,
+    total,
 
     // 弹窗状态
     isConfigOpen,
@@ -123,6 +136,8 @@ export function useBoardConfig({ activeNodeId }: UseBoardConfigOptions) {
     isAddBoardOpen,
 
     // 操作
+    setPage,
+    setPageSize,
     setSelectedRowKeys,
     setIsConfigOpen,
     setIsDeleteOpen,

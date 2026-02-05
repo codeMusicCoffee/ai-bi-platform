@@ -65,6 +65,11 @@ export interface BoardConfigSectionProps {
   tableData: DashboardItem[];
   loading: boolean;
   selectedRowKeys: string[];
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
   onSelectionChange: (keys: string[]) => void;
   onAddBoard: () => void;
   onEditBoard: (board: DashboardItem) => void;

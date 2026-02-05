@@ -3,7 +3,6 @@
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation';
 import { Markdown } from '@/components/ai-elements/markdown';
@@ -20,7 +19,7 @@ import { InputGroupButton, InputGroupTextarea } from '@/components/ui/input-grou
 import { cn } from '@/lib/utils';
 import { chatService } from '@/services/chat';
 import { useChatStore } from '@/store/use-chat-store';
-import { Loader2, Paperclip, Send, Sparkles } from 'lucide-react';
+import { Loader2, Paperclip, Sparkles } from 'lucide-react';
 import { ComponentProps, useEffect, useRef, useState } from 'react';
 
 // Message interface
@@ -90,7 +89,6 @@ const PromptTextarea = (props: ComponentProps<typeof InputGroupTextarea>) => {
 // Helper to convert dataURL to File
 function dataURLtoFile(dataurl: string, filename: string) {
   const arr = dataurl.split(',');
-  // Handle case where dataurl might be invalid or empty
   if (arr.length < 2) return null;
 
   const mimeMatch = arr[0].match(/:(.*?);/);
@@ -165,7 +163,6 @@ const FileAutoUploader = ({ onDatasetUploaded }: { onDatasetUploaded: (id: strin
   return null;
 };
 
-// Sub-component to handle drag and drop for the entire chat area
 const ChatDragDropArea = ({
   children,
   className,
@@ -233,6 +230,13 @@ export default function AiChat({
   const isSubmittingRef = useRef(false);
   const datasetIdRef = useRef<string | null>(null);
 
+  const [suggestedPrompts] = useState([
+    '把【图表名称】【图形类型】的指标调整为【指标值】',
+    '把【图表名称】【图形类型】的指标调整为【图形类型】',
+    '把【图表名称】【图形类型】的【元素】调整为【颜色】',
+    '把【图表名称】【图形类型】和【图表名称】【图形类型】的位置互换',
+  ]);
+
   const currentFilesRef = useRef<Record<string, string>>({});
 
   const updateLocalFiles = (files: Record<string, string>) => {
@@ -263,14 +267,12 @@ export default function AiChat({
               filesFromApi[f.path] = f.code;
             });
             updateLocalFiles(filesFromApi);
-            // 新实现：通知父组件 artifact 数据已获取，由父组件控制渲染时机
             if (onArtifactReady) onArtifactReady(filesFromApi);
           }
         } catch (err) {
           console.error('Failed to fetch initial artifact:', err);
         } finally {
           updateLoadingState(false);
-          // 新增：通知父组件 artifact 数据加载完成
           if (onFetchComplete) onFetchComplete();
         }
       };
@@ -311,7 +313,6 @@ export default function AiChat({
             const processArtifact = (code: any) => {
               const filesObj = typeof code === 'string' ? { '/App.tsx': code } : code;
               updateLocalFiles(filesObj);
-              // 新实现：通知父组件 artifact 数据已获取，由父组件控制渲染时机
               if (onArtifactReady) onArtifactReady(filesObj);
             };
 
@@ -337,7 +338,6 @@ export default function AiChat({
         console.error('Error loading session:', error);
       } finally {
         updateLoadingState(false);
-        // 新增：通知父组件 session 数据加载完成
         if (onFetchComplete) onFetchComplete();
       }
     };
@@ -515,36 +515,56 @@ export default function AiChat({
   return (
     <PromptInputProvider>
       <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
-      <div className="flex flex-col h-full bg-white">
-        <div className="p-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-2 text-indigo-600 mb-1">
-            <Sparkles className="w-5 h-5" />
-            <h1 className="text-lg font-bold">Generative BI Local</h1>
-          </div>
-          <p className="text-xs text-gray-400">Powered by Gemini Pro & Sandpack</p>
+      <div className="flex flex-col h-full bg-linear-to-b from-[#EBF2FF] to-[#F5F8FF] border-[2px] border-white/100 rounded-[10px] shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-5 py-3 shrink-0">
+          <img src="/images/aichat/robot.svg" />
+          <img src="/images/aichat/title.svg" />
         </div>
 
-        <Conversation className="flex-1 bg-slate-50">
-          <ConversationContent className="p-4 gap-6">
+        <Conversation className="flex-1 bg-transparent!">
+          <ConversationContent className="px-5 py-4 gap-4">
             {messages.length === 0 ? (
-              <ConversationEmptyState
-                icon={<Sparkles className="w-10 h-10 opacity-30" />}
-                title="描述你的需求"
-                description="例如：帮我画一个物流监控看板..."
-              />
+              <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
+                  您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
+                </div>
+
+                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
+                    <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      换一批
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {suggestedPrompts.map((prompt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSendMessage({ text: prompt, files: [] })}
+                        className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : (
               messages.map((msg, index) => (
                 <Message key={msg.id} from={msg.role}>
                   <MessageContent
                     className={cn(
-                      'text-sm',
-                      msg.role === 'assistant' && 'bg-white border shadow-sm rounded-xl px-4 py-3',
-                      msg.role === 'user' && '!bg-blue-100 !text-slate-800 !rounded-xl px-4 py-3'
+                      'text-sm max-w-[88%]',
+                      msg.role === 'assistant'
+                        ? 'bg-white shadow-sm border border-gray-50 rounded-[12px] px-4 py-3 text-gray-700'
+                        : 'bg-blue-600 text-white rounded-[12px] px-4 py-3 shadow-md ml-auto'
                     )}
                   >
                     {msg.content ? (
                       msg.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none">
+                        <div className="prose prose-sm max-w-none text-gray-700">
                           {(() => {
                             const thinkMatch = msg.content.match(
                               /<think>([\s\S]*?)(?:<\/think>|$)/
@@ -560,21 +580,25 @@ export default function AiChat({
                             return (
                               <>
                                 {thinkContent && (
-                                  <div className="bg-gray-50 border-l-2 border-gray-300 pl-3 py-2 mb-3 text-gray-500 italic text-xs rounded-r">
-                                    <div className="font-semibold not-italic mb-1 text-gray-400 flex items-center gap-2">
-                                      <span>Thinking Process</span>
-                                      {isThinking && <Loader2 className="w-3 h-3 animate-spin" />}
+                                  <div className="bg-gray-50/80 border-l-2 border-gray-300 pl-3 py-2 mb-3 text-gray-500 italic text-xs rounded-r">
+                                    <div className="font-bold not-italic mb-1 text-gray-400 flex items-center gap-1.5">
+                                      <span>思考过程</span>
+                                      {isThinking && (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      )}
                                     </div>
-                                    <div className="whitespace-pre-wrap">{thinkContent}</div>
+                                    <div className="whitespace-pre-wrap leading-relaxed opacity-80">
+                                      {thinkContent}
+                                    </div>
                                   </div>
                                 )}
                                 {hasThinkingEnded &&
                                   !mainContent &&
                                   isLoading &&
                                   index === messages.length - 1 && (
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
-                                      <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                                      <span>看板生成中...</span>
+                                    <div className="flex items-center gap-2 text-gray-400 text-xs py-2">
+                                      <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                      <span>正在构建预览内容...</span>
                                     </div>
                                   )}
                                 {mainContent && <Markdown>{mainContent}</Markdown>}
@@ -583,10 +607,10 @@ export default function AiChat({
                           })()}
                         </div>
                       ) : (
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                       )
                     ) : (
-                      isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
                     )}
                   </MessageContent>
                 </Message>
@@ -596,34 +620,50 @@ export default function AiChat({
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="p-4 border-t border-gray-100 bg-white shrink-0">
-          <ChatDragDropArea className="border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all bg-white">
-            <AttachmentPreview />
-            <PromptInput
-              maxFiles={5}
-              accept=".json,.csv"
-              onSubmit={handleSendMessage}
-              className="w-full"
-            >
-              <AttachmentButton />
-              <PromptTextarea
-                name="message"
-                placeholder="描述您的需求..."
-                className="h-[100px] text-sm"
-              />
-              <InputGroupButton
-                disabled={isLoading || isLoadingProps}
-                type="submit"
-                className="mr-1 mb-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg w-8 h-8 flex items-center justify-center p-0 transition-all"
+        {/* Input Area */}
+        <div className="flex justify-center px-4 pb-6 shrink-0 ">
+          <div
+            className="bg-white rounded-[8px] relative border border-gray-200 focus-within:border-[#306EFD] overflow-hidden"
+            style={{
+              width: '348px',
+              height: '80px',
+              boxShadow: '0px 4px 10px 0px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <ChatDragDropArea className="h-full">
+              <PromptInput
+                maxFiles={5}
+                accept=".json,.csv"
+                onSubmit={handleSendMessage}
+                className="w-full h-full flex flex-col relative"
               >
-                {isLoading || isLoadingProps ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </InputGroupButton>
-            </PromptInput>
-          </ChatDragDropArea>
+                <PromptTextarea
+                  name="message"
+                  className="flex-1 w-full bg-transparent border-0! ring-0! outline-none! focus:ring-0! focus:outline-none! p-3 pb-8 text-[14px] text-gray-800 placeholder:text-gray-400 leading-normal resize-none shadow-none"
+                  style={{ border: 'none', outline: 'none', boxShadow: 'none' }}
+                />
+                <style jsx global>{`
+                  textarea::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
+                <InputGroupButton
+                  disabled={isLoading || isLoadingProps}
+                  type="submit"
+                  className={cn(
+                    'absolute right-2 bottom-1 w-6 h-6 flex items-center justify-center p-0 rounded-full transition-all duration-300 border-none shadow-none outline-hidden cursor-pointer',
+                    'bg-[#306EFD] hover:bg-[#285ad4] text-white disabled:opacity-40 disabled:grayscale'
+                  )}
+                >
+                  {isLoading || isLoadingProps ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <img src="/images/aichat/send.svg" className="w-full h-full" alt="send" />
+                  )}
+                </InputGroupButton>
+              </PromptInput>
+            </ChatDragDropArea>
+          </div>
         </div>
       </div>
     </PromptInputProvider>

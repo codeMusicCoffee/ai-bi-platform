@@ -1,0 +1,9 @@
+# Attention-Memory Skill Configuration
+# This file is part of the skill package and defines memory storage location
+# Created: 2026-02-02
+
+# Memory root path (relative to PROJECT ROOT, not skill directory)
+# Options:
+#   ./memory         - Project root/memory (recommended)
+#   ./.agent/memory  - Inside .agent folder
+memory_root: ./memory
