@@ -1,24 +1,26 @@
-'use client';
+"use client";
 
-import { ManageHeader } from '@/app/manage/_components/ManageHeader';
-import { cn } from '@/lib/utils';
-import { useChatStore } from '@/store/use-chat-store';
-import { FileCode, Play, RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import AiChat, { ProgressInfo } from './comp/AiChat';
-import DashboardPreview from './comp/DashboardPreview';
+import { ManageHeader } from "@/app/manage/_components/ManageHeader";
+import { cn } from "@/lib/utils";
+import { useChatStore } from "@/store/use-chat-store";
+import { FileCode, Play, RefreshCw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import AiChat, { ProgressInfo } from "./comp/AiChat";
+import DashboardPreview from "./comp/DashboardPreview";
 
-export default function AiChatPage() {
-  const [userInput, setUserInput] = useState('');
+import { Suspense } from "react";
+
+function AiChatPageContent() {
+  const [userInput, setUserInput] = useState("");
   const [refreshId, setRefreshId] = useState(0);
   const [manualRefreshId, setManualRefreshId] = useState(0);
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
 
   const searchParams = useSearchParams();
-  const sessionIdParam = searchParams.get('sessionId');
-  const artifactIdParam = searchParams.get('artifactId');
-  const [boardName, setBoardName] = useState('');
+  const sessionIdParam = searchParams.get("sessionId");
+  const artifactIdParam = searchParams.get("artifactId");
+  const [boardName, setBoardName] = useState("");
   const setSessionId = useChatStore((state) => state.setSessionId);
 
   useEffect(() => {
@@ -32,20 +34,24 @@ export default function AiChatPage() {
 
   useEffect(() => {
     if (sessionIdParam) {
-      console.log('🔗 [page.tsx] session id from url:', sessionIdParam);
+      console.log("🔗 [page.tsx] session id from url:", sessionIdParam);
       setSessionId(sessionIdParam);
     }
   }, [sessionIdParam, setSessionId]);
 
   // 新实现：支持多文件 artifact
-  const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>({});
-  const [streamingFiles, setStreamingFiles] = useState<Record<string, string>>({});
+  const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>(
+    {},
+  );
+  const [streamingFiles, setStreamingFiles] = useState<Record<string, string>>(
+    {},
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   // 新增：追踪 session 数据是否已获取完成，用于区分"初次进入未加载"和"加载完成但无数据"
   const [hasFetchedSession, setHasFetchedSession] = useState(false);
 
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [isFullScreen, setIsFullScreen] = useState(false);
   // 新增：组件生成进度信息
   const [progress, setProgress] = useState<ProgressInfo | null>(null);
@@ -58,7 +64,7 @@ export default function AiChatPage() {
   // 新实现：当沙箱就绪且有待渲染文件时，执行实际更新
   const flushPendingFiles = useCallback(() => {
     if (sandpackReady && pendingFilesRef.current) {
-      console.log('🚀 [page.tsx] 沙箱已就绪，开始渲染 artifact 内容');
+      console.log("🚀 [page.tsx] 沙箱已就绪，开始渲染 artifact 内容");
       setGeneratedFiles(pendingFilesRef.current);
       setRefreshId((prev) => prev + 1);
       pendingFilesRef.current = null;
@@ -86,30 +92,32 @@ export default function AiChatPage() {
               >
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </div> */}
-              <h2 className="text-[16px] font-bold text-gray-800">{boardName || ''}</h2>
+              <h2 className="text-[16px] font-bold text-gray-800">
+                {boardName || ""}
+              </h2>
             </div>
             <div className="flex items-center gap-6">
               {/* 新增：预览/代码切换按钮和刷新按钮 */}
               <div className="flex items-center bg-gray-100 p-1 rounded-lg">
                 <button
-                  onClick={() => setViewMode('preview')}
+                  onClick={() => setViewMode("preview")}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-all rounded-md cursor-pointer',
-                    viewMode === 'preview'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                    "flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-all rounded-md cursor-pointer",
+                    viewMode === "preview"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700",
                   )}
                 >
                   <Play className="w-3.5 h-3.5" />
                   <span>Preview</span>
                 </button>
                 <button
-                  onClick={() => setViewMode('code')}
+                  onClick={() => setViewMode("code")}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-all rounded-md cursor-pointer',
-                    viewMode === 'code'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                    "flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-all rounded-md cursor-pointer",
+                    viewMode === "code"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700",
                   )}
                 >
                   <FileCode className="w-3.5 h-3.5" />
@@ -130,11 +138,19 @@ export default function AiChatPage() {
                 className="flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-primary transition-colors cursor-pointer"
                 onClick={() => setIsFullScreen(!isFullScreen)}
               >
-                <img src="/images/preview/fullscreen.svg" alt="full screen" className="w-4 h-4" />
+                <img
+                  src="/images/preview/fullscreen.svg"
+                  alt="full screen"
+                  className="w-4 h-4"
+                />
                 <span>全屏</span>
               </button>
               <button className="flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-primary transition-colors cursor-pointer">
-                <img src="/images/preview/save.svg" alt="save" className="w-4 h-4" />
+                <img
+                  src="/images/preview/save.svg"
+                  alt="save"
+                  className="w-4 h-4"
+                />
                 <span>保存</span>
               </button>
             </div>
@@ -142,23 +158,32 @@ export default function AiChatPage() {
         )}
 
         {/* 3. 下方内容区域：左右排列 */}
-        <div className={cn('flex flex-1 overflow-hidden gap-[20px]', isFullScreen && 'p-0 gap-0')}>
+        <div
+          className={cn(
+            "flex flex-1 overflow-hidden gap-[20px]",
+            isFullScreen && "p-0 gap-0",
+          )}
+        >
           {/* 左侧：代码预览区 */}
           <div
             className={cn(
-              'flex-1 flex flex-col min-w-0 transition-all duration-300 mt-4',
-              viewMode === 'code' ? 'w-full' : 'relative',
-              isFullScreen && 'mt-0'
+              "flex-1 flex flex-col min-w-0 transition-all duration-300 mt-4",
+              viewMode === "code" ? "w-full" : "relative",
+              isFullScreen && "mt-0",
             )}
           >
             <div
               className={cn(
-                'flex-1 bg-white rounded-[12px] shadow-sm overflow-hidden relative',
-                isFullScreen && 'rounded-0 shadow-none fixed inset-0 z-60'
+                "flex-1 bg-white rounded-[12px] shadow-sm overflow-hidden relative",
+                isFullScreen && "rounded-0 shadow-none fixed inset-0 z-60",
               )}
             >
               <DashboardPreview
-                files={Object.keys(generatedFiles).length > 0 ? generatedFiles : streamingFiles}
+                files={
+                  Object.keys(generatedFiles).length > 0
+                    ? generatedFiles
+                    : streamingFiles
+                }
                 isLoading={isLoading || isChatLoading}
                 refreshId={refreshId}
                 onRefresh={() => setManualRefreshId((prev) => prev + 1)}
@@ -172,7 +197,7 @@ export default function AiChatPage() {
                   Object.keys(streamingFiles).length === 0
                 }
                 onSandpackReady={() => {
-                  console.log('🎉 [page.tsx] 沙箱已就绪');
+                  console.log("🎉 [page.tsx] 沙箱已就绪");
                   setSandpackReady(true);
                 }}
               />
@@ -227,5 +252,19 @@ export default function AiChatPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function AiChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-screen">
+          Loading...
+        </div>
+      }
+    >
+      <AiChatPageContent />
+    </Suspense>
   );
 }

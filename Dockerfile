@@ -1,17 +1,15 @@
-# ============================================
-# AI-BI Frontend Dockerfile
-# Next.js 静态导出 + Nginx 托管
-# ============================================
-# 使用前请先在本地执行: pnpm run build
-# 确保 out 目录存在
-
+# Production Image
 FROM nginx:alpine
 
-# 复制静态文件到 Nginx 目录
-COPY out /usr/share/nginx/html
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
 
-# 复制自定义 Nginx 配置
+# Copy custom config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy static assets from local build
+# Note: User must run 'npm run build' locally first to generate 'out' directory
+COPY out /usr/share/nginx/html
 
 EXPOSE 80
 
