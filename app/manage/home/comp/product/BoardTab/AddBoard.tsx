@@ -1,24 +1,33 @@
-'use client';
+"use client";
 
-import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
-import { Button } from '@/components/ui/button';
+import {
+  SealedForm,
+  SealedFormFieldConfig,
+} from "@/components/common/SealedForm";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { useChatStore } from '@/store/use-chat-store';
-import { AlertCircle, CheckCircle2, ChevronRight, ScrollText } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import * as z from 'zod';
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useChatStore } from "@/store/use-chat-store";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  ScrollText,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import * as z from "zod";
+import { API_BASE_URL } from "@/constants";
 
 const generateSchema = z.object({
-  name: z.string().min(1, '请输入看板名称'),
+  name: z.string().min(1, "请输入看板名称"),
   style_description: z.string().optional(),
   extra_description: z.string().optional(),
 });
@@ -40,16 +49,21 @@ export function AddBoard({
   lifecycleId,
   moduleConfigIds = [],
 }: AddBoardProps) {
-  const [status, setStatus] = useState<'editing' | 'processing' | 'completed' | 'error'>('editing');
+  const [status, setStatus] = useState<
+    "editing" | "processing" | "completed" | "error"
+  >("editing");
 
   // 增强版进度状态
   const [progress, setProgress] = useState({
     current: 0,
     total: 0,
-    text: '准备中...',
-    files: [] as { path: string; status: 'generating' | 'success' | 'failed' }[],
+    text: "准备中...",
+    files: [] as {
+      path: string;
+      status: "generating" | "success" | "failed";
+    }[],
     logs: [] as string[],
-    summary: '',
+    summary: "",
   });
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -66,66 +80,67 @@ export function AddBoard({
   }, [progress.logs]);
 
   const handleConfirm = async (values: GenerateFormValues) => {
-    setStatus('processing');
+    setStatus("processing");
     setProgress({
       current: 0,
       total: 0,
-      text: '正在初始化...',
+      text: "正在初始化...",
       files: [],
-      logs: ['🚀 正在建立数据连接...'],
-      summary: '',
+      logs: ["🚀 正在建立数据连接..."],
+      summary: "",
     });
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      const baseUrl = API_BASE_URL;
       const response = await fetch(
         `${baseUrl}/api/pm/lifecycles/${lifecycleId}/actions/generate-kanban`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
           },
           body: JSON.stringify({
             name: values.name,
             style_description: values.style_description,
             extra_description: values.extra_description,
             node_dataset_ids: moduleConfigIds,
-            session_id: sessionId || '',
+            session_id: sessionId || "",
             regenerate: false,
-            locale: 'zh-CN',
+            locale: "zh-CN",
             debug: false,
           }),
-        }
+        },
       );
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法读取响应流');
+      if (!reader) throw new Error("无法读取响应流");
 
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
 
           let jsonContent = trimmedLine;
-          if (trimmedLine.startsWith('data: ')) {
+          if (trimmedLine.startsWith("data: ")) {
             jsonContent = trimmedLine.slice(6);
           }
 
-          if (jsonContent === '[DONE]') {
-            setStatus('completed');
+          if (jsonContent === "[DONE]") {
+            setStatus("completed");
             continue;
           }
 
@@ -134,43 +149,47 @@ export function AddBoard({
 
             // SSE 数据处理逻辑
             switch (parsed.type) {
-              case 'session_id':
+              case "session_id":
                 if (parsed.content) {
                   setCurrentSessionId(parsed.content);
                 }
                 break;
 
-              case 'thinking':
+              case "thinking":
                 if (parsed.content) {
                   const logMsg = parsed.content.trim();
                   if (logMsg) {
                     setProgress((prev) => ({
                       ...prev,
                       logs: [...prev.logs, logMsg],
-                      text: logMsg.split('\n')[0], // 取第一行作为当前标题
+                      text: logMsg.split("\n")[0], // 取第一行作为当前标题
                     }));
                   }
                 }
                 break;
 
-              case 'progress':
+              case "progress":
                 const pContent =
-                  typeof parsed.content === 'string' ? JSON.parse(parsed.content) : parsed.content;
+                  typeof parsed.content === "string"
+                    ? JSON.parse(parsed.content)
+                    : parsed.content;
                 if (pContent) {
                   setProgress((prev) => {
-                    const existingFileIdx = prev.files.findIndex((f) => f.path === pContent.file);
+                    const existingFileIdx = prev.files.findIndex(
+                      (f) => f.path === pContent.file,
+                    );
                     let newFiles = [...prev.files];
 
                     if (pContent.file) {
                       if (existingFileIdx > -1) {
                         newFiles[existingFileIdx] = {
                           ...newFiles[existingFileIdx],
-                          status: pContent.status || 'generating',
+                          status: pContent.status || "generating",
                         };
                       } else {
                         newFiles.push({
                           path: pContent.file,
-                          status: pContent.status || 'generating',
+                          status: pContent.status || "generating",
                         });
                       }
                     }
@@ -185,62 +204,73 @@ export function AddBoard({
                 }
                 break;
 
-              case 'artifact_file':
+              case "artifact_file":
                 const fContent =
-                  typeof parsed.content === 'string' ? JSON.parse(parsed.content) : parsed.content;
+                  typeof parsed.content === "string"
+                    ? JSON.parse(parsed.content)
+                    : parsed.content;
                 if (fContent) {
                   setProgress((prev) => ({
                     ...prev,
                     files: prev.files.map((f) =>
-                      f.path === fContent.path ? { ...f, status: fContent.status || 'success' } : f
+                      f.path === fContent.path
+                        ? { ...f, status: fContent.status || "success" }
+                        : f,
                     ),
                   }));
                 }
                 break;
 
-              case 'message':
-                setProgress((prev) => ({ ...prev, summary: parsed.content || '' }));
+              case "message":
+                setProgress((prev) => ({
+                  ...prev,
+                  summary: parsed.content || "",
+                }));
                 break;
 
-              case 'artifact_end':
-                setProgress((prev) => ({ ...prev, current: prev.total, text: '生成任务已完成' }));
+              case "artifact_end":
+                setProgress((prev) => ({
+                  ...prev,
+                  current: prev.total,
+                  text: "生成任务已完成",
+                }));
                 break;
             }
           } catch (e) {
-            console.warn('解析流数据失败:', e, jsonContent);
+            console.warn("解析流数据失败:", e, jsonContent);
           }
         }
       }
 
-      toast.success('生成完成');
+      toast.success("生成完成");
       // 成功后由用户点击关闭或自动延迟关闭
     } catch (error: any) {
-      console.error('Failed to generate kanban:', error);
-      setStatus('error');
-      toast.error('生成失败: ' + error.message);
+      console.error("Failed to generate kanban:", error);
+      setStatus("error");
+      toast.error("生成失败: " + error.message);
     }
   };
 
   const resetAndClose = () => {
     onOpenChange(false);
     setTimeout(() => {
-      setStatus('editing');
+      setStatus("editing");
       setProgress({
         current: 0,
         total: 0,
-        text: '准备中...',
+        text: "准备中...",
         files: [],
         logs: [],
-        summary: '',
+        summary: "",
       });
     }, 300);
   };
 
   const formFields: SealedFormFieldConfig<GenerateFormValues>[] = [
     {
-      name: 'name',
-      label: '看板名称',
-      placeholder: '请输入看板名称',
+      name: "name",
+      label: "看板名称",
+      placeholder: "请输入看板名称",
       required: true,
       render: (field) => (
         <Textarea
@@ -251,9 +281,9 @@ export function AddBoard({
       ),
     },
     {
-      name: 'style_description',
-      label: '风格描述',
-      placeholder: '请输入风格描述',
+      name: "style_description",
+      label: "风格描述",
+      placeholder: "请输入风格描述",
       render: (field) => (
         <Textarea
           {...field}
@@ -263,9 +293,9 @@ export function AddBoard({
       ),
     },
     {
-      name: 'extra_description',
-      label: '其他描述',
-      placeholder: '请输入其他需求描述',
+      name: "extra_description",
+      label: "其他描述",
+      placeholder: "请输入其他需求描述",
       render: (field) => (
         <Textarea
           {...field}
@@ -280,19 +310,21 @@ export function AddBoard({
     <Dialog open={open} onOpenChange={resetAndClose}>
       <DialogContent className="max-w-[800px] p-0 overflow-hidden border-none rounded-[12px] min-h-[400px] flex flex-col">
         <DialogHeader className="px-6 py-4 flex flex-row items-center justify-between border-b border-gray-100">
-          <DialogTitle className="text-[16px] font-bold text-gray-800">生成看板</DialogTitle>
+          <DialogTitle className="text-[16px] font-bold text-gray-800">
+            生成看板
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col">
-          {status === 'editing' ? (
+          {status === "editing" ? (
             <SealedForm
               schema={generateSchema}
               fields={formFields}
               onSubmit={handleConfirm}
               defaultValues={{
-                name: '',
-                style_description: '',
-                extra_description: '',
+                name: "",
+                style_description: "",
+                extra_description: "",
               }}
               className="flex-1 flex flex-col h-full"
             >
@@ -308,7 +340,10 @@ export function AddBoard({
                     >
                       取消
                     </Button>
-                    <Button type="submit" className="text-white shadow-none cursor-pointer">
+                    <Button
+                      type="submit"
+                      className="text-white shadow-none cursor-pointer"
+                    >
                       确定
                     </Button>
                   </DialogFooter>
@@ -318,7 +353,7 @@ export function AddBoard({
           ) : (
             <div className="flex-1 p-6 flex flex-col items-center justify-center">
               <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
-                {status === 'processing' && (
+                {status === "processing" && (
                   <div className="flex flex-col h-full">
                     {/* 顶部总体进度 */}
                     <div className="flex items-center justify-between mb-8 px-4">
@@ -326,7 +361,7 @@ export function AddBoard({
                         <h4 className="text-[20px] font-bold text-gray-800">
                           正在生成看板
                           <span>
-                            {' '}
+                            {" "}
                             {progress.total > 0 && (
                               <span className="text-primary font-medium">
                                 [{progress.current}/{progress.total}]
@@ -335,7 +370,7 @@ export function AddBoard({
                           </span>
                         </h4>
                         <p className="text-[14px] text-gray-500 flex items-center gap-2">
-                          {progress.text || '初始化环境...'}
+                          {progress.text || "初始化环境..."}
                         </p>
                       </div>
                       <div className="relative w-20 h-20">
@@ -361,7 +396,9 @@ export function AddBoard({
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center text-[16px] font-bold text-primary">
                           {progress.total > 0
-                            ? Math.round((progress.current / progress.total) * 100)
+                            ? Math.round(
+                                (progress.current / progress.total) * 100,
+                              )
                             : 0}
                           %
                         </div>
@@ -396,25 +433,30 @@ export function AddBoard({
                   </div>
                 )}
 
-                {status === 'completed' && (
+                {status === "completed" && (
                   <div className="flex flex-col items-center text-center animate-in zoom-in duration-500 py-8">
                     <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
                       <CheckCircle2 className="w-10 h-10 text-green-500" />
                     </div>
-                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">看板生成成功</h4>
+                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">
+                      看板生成成功
+                    </h4>
                     <div className="max-w-[400px] bg-gray-50 p-4 rounded-xl border border-gray-100 mb-8">
                       <p className="text-[13px] text-gray-600 text-left whitespace-pre-wrap leading-relaxed">
                         {progress.summary ||
-                          '看板已根据您的描述成功生成并保存，具体构建细节见执行日志。'}
+                          "看板已根据您的描述成功生成并保存，具体构建细节见执行日志。"}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <Button
                         onClick={() => {
                           if (currentSessionId) {
-                            window.open(`/previewpage?sessionId=${currentSessionId}`, '_blank');
+                            window.open(
+                              `/previewpage?sessionId=${currentSessionId}`,
+                              "_blank",
+                            );
                           } else {
-                            window.open('/previewpage', '_blank');
+                            window.open("/previewpage", "_blank");
                           }
                         }}
                         className="w-[120px] bg-primary hover:bg-primary/90 text-white shadow-md transition-all active:scale-95 cursor-pointer"
@@ -425,17 +467,19 @@ export function AddBoard({
                   </div>
                 )}
 
-                {status === 'error' && (
+                {status === "error" && (
                   <div className="flex flex-col items-center text-center py-8">
                     <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
                       <AlertCircle className="w-10 h-10 text-red-500" />
                     </div>
-                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">生成失败</h4>
+                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">
+                      生成失败
+                    </h4>
                     <p className="text-[14px] text-gray-500 mb-8">
                       抱歉，后端处理出现了一些问题，请重试
                     </p>
                     <Button
-                      onClick={() => setStatus('editing')}
+                      onClick={() => setStatus("editing")}
                       variant="outline"
                       className="w-[120px] cursor-pointer"
                     >

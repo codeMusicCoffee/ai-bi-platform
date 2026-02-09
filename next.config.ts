@@ -15,16 +15,6 @@ const nextConfig: NextConfig = {
 
   // 可选：生成 .html 后缀的文件
   // trailingSlash: true,
-
-  async rewrites() {
-    return [
-      {
-        source: '/test/:path*',
-        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/:path*`,
-      },
-    ];
-  },
 };
-
 
 export default nextConfig;
