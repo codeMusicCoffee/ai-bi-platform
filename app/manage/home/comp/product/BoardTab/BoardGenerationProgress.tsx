@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, ChevronRight, ScrollText } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronRight, Loader2, ScrollText } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 interface BoardGenerationProgressProps {
@@ -42,17 +42,18 @@ export function BoardGenerationProgress({
             {/* 顶部总体进度 */}
             <div className="flex items-center justify-between mb-8 px-4">
               <div className="flex flex-col">
-                <h4 className="text-[20px] font-bold text-gray-800">
-                  正在生成看板
-                  <span>
-                    {' '}
-                    {progress.total > 0 && (
-                      <span className="text-primary font-medium">
-                        [{progress.current}/{progress.total}]
-                      </span>
-                    )}
-                  </span>
-                </h4>
+                  <h4 className="text-[20px] font-bold text-gray-800">
+                    正在生成看板
+                    <span>
+                      {' '}
+                      {progress.total > 0 && (
+                        <span className="text-primary font-medium">
+                          [{progress.current}/{progress.total}]
+                        </span>
+                      )}
+                    </span>
+                    <Loader2 className="inline-block w-4 h-4 ml-2 text-primary animate-spin align-middle" />
+                  </h4>
                 <p className="text-[14px] text-gray-500 flex items-center gap-2">
                   {progress.text || '初始化环境...'}
                 </p>
@@ -87,16 +88,16 @@ export function BoardGenerationProgress({
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="overflow-hidden">
               {/* 左侧日志区 */}
-              <div className="h-full flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+              <div className="h-[360px] flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-2">
                   <ScrollText className="w-4 h-4 text-gray-400" />
                   <span className="text-[12px] font-bold text-gray-600">思考过程与执行日志</span>
                 </div>
                 <div
                   ref={scrollRef}
-                  className="flex-1 p-4 overflow-y-auto space-y-2 font-mono scrollbar-thin scrollbar-thumb-gray-200"
+                  className="flex-1 p-4 overflow-auto space-y-2 font-mono scrollbar-thin scrollbar-thumb-gray-200"
                 >
                   {progress.logs.map((log, i) => (
                     <div
