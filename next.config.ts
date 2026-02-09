@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   // 静态导出模式 - 生成纯 HTML/CSS/JS，使用 Nginx 托管
   output: "export",
   images: { unoptimized: true },
+  devIndicators: false,
 
   // 可选：生成 .html 后缀的文件
   // trailingSlash: true,

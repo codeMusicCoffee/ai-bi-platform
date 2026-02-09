@@ -9,6 +9,11 @@ interface UseLifecycleNodesOptions {
   onEditModeEnter?: () => void;
 }
 
+type FetchDataOptions = {
+  fallbackSelect?: 'first' | 'last';
+  preferId?: string | null;
+};
+
 export function useLifecycleNodes({ productId, onEditModeEnter }: UseLifecycleNodesOptions) {
   const [nodes, setNodes] = useState<LifecycleNode[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -18,8 +23,9 @@ export function useLifecycleNodes({ productId, onEditModeEnter }: UseLifecycleNo
   const isDragOccurred = useRef(false);
 
   // 获取节点数据
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: FetchDataOptions) => {
     if (!productId) return;
+    const { fallbackSelect = 'first', preferId } = options || {};
     try {
       setLoading(true);
       const res = await pmService.getLifecycles(productId);
@@ -34,12 +40,15 @@ export function useLifecycleNodes({ productId, onEditModeEnter }: UseLifecycleNo
       }));
       setNodes(newNodes);
 
-      // 保持当前选中，或选择第一个
+      // 保持当前选中，或按策略选择首/尾节点
       setActiveNodeId((prev) => {
-        if (prev && newNodes.some((n) => n.id === prev)) {
-          return prev;
+        const targetId = preferId ?? prev;
+        if (targetId && newNodes.some((n) => n.id === targetId)) {
+          return targetId;
         }
-        return newNodes[0]?.id || null;
+        return fallbackSelect === 'last'
+          ? newNodes[newNodes.length - 1]?.id || null
+          : newNodes[0]?.id || null;
       });
     } catch (error) {
       console.error('Failed to fetch lifecycles:', error);
@@ -66,7 +75,7 @@ export function useLifecycleNodes({ productId, onEditModeEnter }: UseLifecycleNo
           description: '',
         });
 
-        const newId = res.data;
+        const newId = typeof res.data === 'string' ? res.data : res.data?.id;
         if (newId) {
           setActiveNodeId(newId);
           onEditModeEnter?.();
@@ -84,7 +93,7 @@ export function useLifecycleNodes({ productId, onEditModeEnter }: UseLifecycleNo
           }
         }
 
-        await fetchData();
+        await fetchData({ fallbackSelect: 'last', preferId: newId || null });
         return newId;
       } catch (error) {
         console.error('Failed to create node:', error);

@@ -37,6 +37,13 @@ interface AddBigEventProps {
   lifecycleOptions: { id: string; name: string }[];
 }
 
+const normalizeDateInputValue = (value?: string) => {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})T/);
+  return isoMatch ? isoMatch[1] : value;
+};
+
 export function AddBigEvent({
   open,
   onOpenChange,
@@ -114,7 +121,9 @@ export function AddBigEvent({
             defaultValues={{
               title: initialData?.title || '',
               lifecycle_id: initialData?.lifecycle_id || '',
-              event_date: (initialData as any)?.event_date || (initialData as any)?.date || '',
+              event_date: normalizeDateInputValue(
+                (initialData as any)?.event_date || (initialData as any)?.date || ''
+              ),
               content: initialData?.content || '',
             }}
             onSubmit={handleFormSubmit}

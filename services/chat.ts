@@ -28,6 +28,13 @@ export const chatService = {
   },
 
   /**
+   * Withdraw the last message turn of a session
+   */
+  withdrawSession: (sessionId: string) => {
+    return request.post(`/api/sessions/${sessionId}/actions/withdraw`);
+  },
+
+  /**
    * Upload a dataset file
    */
   uploadDataset: (formData: FormData) => {

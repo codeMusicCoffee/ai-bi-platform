@@ -33,6 +33,22 @@ interface BasicInfoTabProps {
   onRefreshTree?: () => void;
 }
 
+const formatDateDisplay = (value?: string) => {
+  if (!value) return '-';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (isoMatch) return isoMatch[1];
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -137,18 +153,34 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
 
   const handleSubmit = async (values: ProductFormValues) => {
     try {
-      const res = await pmService.updateProduct(productId, {
+      const alcoholDegree = Number(values.abv);
+      const volumeMl = Number(values.capacity);
+      const price = values.price ? Number(values.price) : undefined;
+
+      if (
+        Number.isNaN(alcoholDegree) ||
+        Number.isNaN(volumeMl) ||
+        (values.price && Number.isNaN(price))
+      ) {
+        console.error('Invalid numeric fields in product form');
+        return;
+      }
+
+      const payload = {
         name: values.name,
-        alcohol_degree: values.abv,
-        volume_ml: values.capacity,
-        price: values.price,
+        alcohol_degree: alcoholDegree,
+        volume_ml: volumeMl,
+        ...(typeof price === 'number' ? { price } : {}),
         packaging_type: values.packaging,
         main_channel: values.channels,
         tech_manager: values.techLeader,
         rd_manager: values.rdLeader,
         packaging_manager: values.pkgLeader,
-        delisting_date: values.delistingDate,
         image_url: values.image_url,
+      };
+
+      const res = await pmService.updateProduct(productId, {
+        ...payload,
       });
 
       if (res.success) {
@@ -344,7 +376,7 @@ export function BasicInfoTab({ productId, onRefreshTree }: BasicInfoTabProps) {
                             {lifecycles.find((l) => l.id === item.lifecycle_id)?.name || '阶段'}
                           </span>
                           <span className="text-[#202224] text-[14px] font-bold">
-                            {item.event_date || item.date}
+                            {formatDateDisplay(item.event_date || item.date)}
                           </span>
                           <span className="text-[#202224] text-[14px] font-bold">{item.title}</span>
                         </div>

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { chatService } from '@/services/chat';
 import { useChatStore } from '@/store/use-chat-store';
 import { Loader2, Paperclip, Sparkles } from 'lucide-react';
-import { ComponentProps, useEffect, useRef, useState } from 'react';
+import { ComponentProps, Fragment, useEffect, useRef, useState } from 'react';
 
 // Message interface
 interface ChatMessage {
@@ -227,8 +227,11 @@ export default function AiChat({
 }: AiChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const isSubmittingRef = useRef(false);
   const datasetIdRef = useRef<string | null>(null);
+  const initialMessageLengthCapturedRef = useRef(false);
+  const [initialMessageLength, setInitialMessageLength] = useState(0);
 
   const [suggestedPrompts] = useState([
     '把【图表名称】【图形类型】的指标调整为【指标值】',
@@ -251,6 +254,68 @@ export default function AiChat({
     setIsLoading(loading);
     if (onStatusChange) {
       onStatusChange(loading);
+    }
+  };
+
+  const refreshSessionData = async (targetSessionId: string) => {
+    const response = await chatService.getSession(targetSessionId);
+    if (!response.success) {
+      if (response.code === 404) {
+        setMessages([]);
+        if (!initialMessageLengthCapturedRef.current) {
+          setInitialMessageLength(0);
+          initialMessageLengthCapturedRef.current = true;
+        }
+        return;
+      }
+      throw new Error('Failed to fetch session');
+    }
+
+    const data = response.data;
+    if (!(data.messages && Array.isArray(data.messages))) return;
+
+    const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
+      id: msg.id || `history-${index}-${Date.now()}`,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+    }));
+    setMessages(history);
+    if (!initialMessageLengthCapturedRef.current) {
+      setInitialMessageLength(history.length);
+      initialMessageLengthCapturedRef.current = true;
+    }
+
+    const messagesWithArtifacts = [...data.messages].reverse();
+    const msgWithArtifact = messagesWithArtifacts.find(
+      (msg: any) => Array.isArray(msg.artifacts) && msg.artifacts.length > 0
+    );
+
+    if (msgWithArtifact) {
+      const lastArtifact = msgWithArtifact.artifacts[msgWithArtifact.artifacts.length - 1];
+
+      const processArtifact = (code: any) => {
+        const filesObj = typeof code === 'string' ? { '/App.tsx': code } : code;
+        updateLocalFiles(filesObj);
+        if (onArtifactReady) onArtifactReady(filesObj);
+      };
+
+      if (lastArtifact.code) {
+        processArtifact(lastArtifact.code);
+      } else if (lastArtifact.id) {
+        try {
+          const artRes = await chatService.getArtifact(lastArtifact.id);
+          if (artRes.success && artRes.data?.files) {
+            const filesFromApi: Record<string, string> = {};
+            artRes.data.files.forEach((f: any) => {
+              filesFromApi[f.path] = f.code;
+            });
+            processArtifact(filesFromApi);
+          }
+        } catch (err) {
+          console.error('Failed to fetch artifact details:', err);
+        }
+      }
     }
   };
 
@@ -285,55 +350,7 @@ export default function AiChat({
     const fetchSession = async () => {
       try {
         updateLoadingState(true);
-        const response = await chatService.getSession(sessionId);
-        if (!response.success) {
-          if (response.code === 404) return;
-          throw new Error('Failed to fetch session');
-        }
-
-        const data = response.data;
-
-        if (data.messages && Array.isArray(data.messages)) {
-          const history: ChatMessage[] = data.messages.map((msg: any, index: number) => ({
-            id: msg.id || `history-${index}-${Date.now()}`,
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-          }));
-          setMessages(history);
-
-          const messagesWithArtifacts = [...data.messages].reverse();
-          const msgWithArtifact = messagesWithArtifacts.find(
-            (msg: any) => Array.isArray(msg.artifacts) && msg.artifacts.length > 0
-          );
-
-          if (msgWithArtifact) {
-            const lastArtifact = msgWithArtifact.artifacts[msgWithArtifact.artifacts.length - 1];
-
-            const processArtifact = (code: any) => {
-              const filesObj = typeof code === 'string' ? { '/App.tsx': code } : code;
-              updateLocalFiles(filesObj);
-              if (onArtifactReady) onArtifactReady(filesObj);
-            };
-
-            if (lastArtifact.code) {
-              processArtifact(lastArtifact.code);
-            } else if (lastArtifact.id) {
-              try {
-                const artRes = await chatService.getArtifact(lastArtifact.id);
-                if (artRes.success && artRes.data?.files) {
-                  const filesFromApi: Record<string, string> = {};
-                  artRes.data.files.forEach((f: any) => {
-                    filesFromApi[f.path] = f.code;
-                  });
-                  processArtifact(filesFromApi);
-                }
-              } catch (err) {
-                console.error('Failed to fetch artifact details:', err);
-              }
-            }
-          }
-        }
+        await refreshSessionData(sessionId);
       } catch (error) {
         console.error('Error loading session:', error);
       } finally {
@@ -364,7 +381,7 @@ export default function AiChat({
         process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
@@ -512,6 +529,36 @@ export default function AiChat({
     }
   };
 
+  const handleWithdraw = async () => {
+    if (!sessionId || isLoading || isSubmittingRef.current || isWithdrawing) return;
+
+    setIsWithdrawing(true);
+    updateLoadingState(true);
+    if (onProgressUpdate) onProgressUpdate(null);
+
+    try {
+      const response = await chatService.withdrawSession(sessionId);
+      if (!response.success) {
+        throw new Error('Failed to withdraw the last turn');
+      }
+      await refreshSessionData(sessionId);
+    } catch (error) {
+      console.error('Error withdrawing session:', error);
+    } finally {
+      setIsWithdrawing(false);
+      updateLoadingState(false);
+    }
+  };
+
+  const shouldHideWithdrawForMessage = (content: string) => {
+    const text = content.trim();
+    return /HTTP\s*404/i.test(text) && /(error|鉂)/i.test(text);
+  };
+
+  const assistantMessageCount = messages.filter((m) => m.role === 'assistant').length;
+  const lastAssistantMessageId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
+  const shouldRenderWelcomeAtBottom = messages.length === initialMessageLength;
+
   return (
     <PromptInputProvider>
       <FileAutoUploader onDatasetUploaded={(id) => (datasetIdRef.current = id)} />
@@ -524,43 +571,46 @@ export default function AiChat({
 
         <Conversation className="flex-1 bg-transparent!">
           <ConversationContent className="px-5 py-4 gap-4">
-            {messages.length === 0 ? (
-              <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
-                  您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
-                </div>
+            {messages.map((msg, index) => (
+              <Fragment key={msg.id}>
+                {index === initialMessageLength && (
+                  <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
+                      您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
+                    </div>
 
-                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
-                    <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      换一批
-                    </button>
+                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
+                        <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          换一批
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {suggestedPrompts.map((prompt, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSendMessage({ text: prompt, files: [] })}
+                            className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {suggestedPrompts.map((prompt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSendMessage({ text: prompt, files: [] })}
-                        className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              messages.map((msg, index) => (
-                <Message key={msg.id} from={msg.role}>
+                )}
+                <Message from={msg.role}>
                   <MessageContent
                     className={cn(
-                      'text-sm max-w-[88%]',
+                      'text-sm max-w-[88%] px-4 py-3',
                       msg.role === 'assistant'
-                        ? 'bg-white shadow-sm border border-gray-50 rounded-[12px] px-4 py-3 text-gray-700'
-                        : 'bg-blue-600 text-white rounded-[12px] px-4 py-3 shadow-md ml-auto'
+                        ? 'bg-white text-gray-700'
+                        : 'bg-[#0470ff] text-white'
                     )}
+                    style={{ borderRadius:    msg.role === 'assistant'
+                        ?  '2px 16px 16px 16px':'16px 2px 16px 16px' }}
                   >
                     {msg.content ? (
                       msg.role === 'assistant' ? (
@@ -612,9 +662,59 @@ export default function AiChat({
                     ) : (
                       isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
                     )}
+                    {msg.role === 'assistant' &&
+                      assistantMessageCount > 2 &&
+                      msg.id === lastAssistantMessageId &&
+                      !!sessionId &&
+                      !shouldHideWithdrawForMessage(msg.content || '') &&
+                      !!msg.content?.trim() && (
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleWithdraw}
+                            disabled={isLoading || isWithdrawing || isLoadingProps}
+                            className="inline-flex items-center gap-1 text-[14px] font-medium text-[#306EFD] leading-none hover:opacity-85 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <img
+                              src="/images/aichat/back.svg"
+                              alt="undo"
+                              className="w-[14px] h-[14px]"
+                            />
+                            <span>撤销</span>
+                          </button>
+                        </div>
+                      )}
                   </MessageContent>
                 </Message>
-              ))
+              </Fragment>
+            ))}
+            {shouldRenderWelcomeAtBottom && (
+              <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
+                  您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
+                </div>
+
+                <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
+                    <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      换一批
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {suggestedPrompts.map((prompt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSendMessage({ text: prompt, files: [] })}
+                        className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </ConversationContent>
           <ConversationScrollButton />

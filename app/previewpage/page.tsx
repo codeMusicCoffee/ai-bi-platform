@@ -259,8 +259,9 @@ export default function AiChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-screen">
-          Loading...
+        <div className="flex h-screen flex-col items-center justify-center gap-3 bg-[#F1F3F6]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-[#306EFD]" />
+          <span className="text-sm font-medium text-blue-600">Loading...</span>
         </div>
       }
     >

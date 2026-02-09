@@ -19,7 +19,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   value,
   onChange,
   // 新实现 将 uploadApi = 'http://192.168.151.246:8000/api/upload' 改为使用 NEXT_PUBLIC_BACKEND_URL
-  uploadApi = `${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/upload`,
+  uploadApi = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/upload`,
   defaultImage,
   defaultIcon,
   readonly = false,
@@ -34,7 +34,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     if (urlPath.startsWith('http') || urlPath.startsWith('data:')) return urlPath;
 
     const baseUrl =
-      process.env.NODE_ENV === 'development' ? process.env.NEXT_PUBLIC_BACKEND_URL || '' : '';
+      process.env.NODE_ENV === 'development' ? process.env.NEXT_PUBLIC_API_BASE_URL || '' : '';
 
     const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
     return `${baseUrl}${normalizedPath}`;

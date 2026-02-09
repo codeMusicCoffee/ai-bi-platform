@@ -22,10 +22,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { pmService } from '@/services/pm';
 import { useChatStore } from '@/store/use-chat-store';
-import { AlertCircle, Check, CheckCircle2, ChevronRight, ScrollText } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
+import { BoardGenerationProgress } from './BoardTab/BoardGenerationProgress';
 
 const homePageSchema = z.object({
   name: z.string().min(1, '请输入首页名称'),
@@ -71,20 +72,12 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
   });
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const { sessionId } = useChatStore();
 
   const [nodes, setNodes] = useState<NodeGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-
-  // 自动滚动日志
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [progress.logs]);
 
   useEffect(() => {
     if (open) {
@@ -542,119 +535,16 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
               </SealedForm>
             )
           ) : (
-            <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[400px]">
-              <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
-                {status === 'processing' && (
-                  <div className="flex flex-col h-full">
-                    {/* Header with Progress */}
-                    <div className="flex items-center justify-between mb-8 px-4">
-                      <div className="flex flex-col">
-                        <h4 className="text-[20px] font-bold text-gray-800">
-                          正在生成首页看板
-                          {progress.total > 0 && (
-                            <span className="text-primary font-medium ml-2">
-                              [{progress.current}/{progress.total}]
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-[14px] text-gray-500 mt-1">
-                          {progress.text || '初始化环境...'}
-                        </p>
-                      </div>
-                      <div className="relative w-20 h-20">
-                        <svg className="w-full h-full" viewBox="0 0 100 100">
-                          <circle
-                            className="text-gray-100 stroke-current"
-                            strokeWidth="8"
-                            fill="transparent"
-                            r="40"
-                            cx="50"
-                            cy="50"
-                          />
-                          <circle
-                            className="text-primary stroke-current transition-all duration-500 ease-out"
-                            strokeWidth="8"
-                            strokeDasharray={`${progress.total > 0 ? Math.round((progress.current / progress.total) * 251.2) : 0}, 251.2`}
-                            strokeLinecap="round"
-                            fill="transparent"
-                            r="40"
-                            cx="50"
-                            cy="50"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center text-[16px] font-bold text-primary">
-                          {progress.total > 0
-                            ? Math.round((progress.current / progress.total) * 100)
-                            : 0}
-                          %
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Logs Area */}
-                    <div className="flex-1 flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden min-h-[200px]">
-                      <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-2">
-                        <ScrollText className="w-4 h-4 text-gray-400" />
-                        <span className="text-[12px] font-bold text-gray-600">生成详情与日志</span>
-                      </div>
-                      <div
-                        ref={scrollRef}
-                        className="flex-1 p-4 overflow-y-auto space-y-2 font-mono text-[12px] text-gray-600"
-                      >
-                        {progress.logs.map((log, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-2 animate-in slide-in-from-left-2 fade-in duration-300"
-                          >
-                            <ChevronRight className="w-3 h-3 mt-1 text-gray-300 flex-none" />
-                            <span className="leading-relaxed">{log}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {status === 'completed' && (
-                  <div className="flex flex-col items-center text-center py-8">
-                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
-                      <CheckCircle2 className="w-10 h-10 text-green-500" />
-                    </div>
-                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">生成成功</h4>
-                    <div className="max-w-[400px] bg-gray-50 p-4 rounded-xl border border-gray-100 mb-8 text-[13px] text-gray-600">
-                      {progress.summary ||
-                        '首页看板已根据所选模块成功生成，您可以点击下方按钮进入预览。'}
-                    </div>
-                    <Button
-                      onClick={() => {
-                        window.open(`/previewpage?sessionId=${currentSessionId || ''}`, '_blank');
-                      }}
-                      className="bg-[#306EFD] hover:bg-[#285ad4] text-white px-8 h-10 rounded-[6px]"
-                    >
-                      去预览
-                    </Button>
-                  </div>
-                )}
-
-                {status === 'error' && (
-                  <div className="flex flex-col items-center text-center py-8">
-                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
-                      <AlertCircle className="w-10 h-10 text-red-500" />
-                    </div>
-                    <h4 className="text-[20px] font-bold text-gray-800 mb-2">生成失败</h4>
-                    <p className="text-[14px] text-gray-500 mb-8">
-                      执行过程中遇到了问题，请尝试重新生成或检查网络配置。
-                    </p>
-                    <Button onClick={() => setStatus('editing')} variant="outline" className="px-8">
-                      重试
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <BoardGenerationProgress
+              status={status as 'processing' | 'completed' | 'error'}
+              progress={progress}
+              currentSessionId={currentSessionId}
+              onRetry={() => setStatus('editing')}
+            />
           )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
