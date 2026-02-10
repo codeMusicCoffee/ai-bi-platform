@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
-import { BoardGenerationProgress } from './BoardGenerationProgress';
+import { BoardGenerationProgress } from '../BoardTab/BoardGenerationProgress';
 
 const generateSchema = z.object({
   name: z.string().min(1, '请输入看板名称'),
@@ -42,6 +42,7 @@ export function AddBoard({
   moduleConfigIds = [],
 }: AddBoardProps) {
   const [status, setStatus] = useState<'editing' | 'processing' | 'completed' | 'error'>('editing');
+  const [titleName, setTitleName] = useState('');
 
   // 增强版进度状态
   const [progress, setProgress] = useState({
@@ -62,6 +63,7 @@ export function AddBoard({
   const { sessionId } = useChatStore();
 
   const handleConfirm = async (values: GenerateFormValues) => {
+    setTitleName(values.name || '');
     setStatus('processing');
     setProgress({
       current: 0,
@@ -228,6 +230,7 @@ export function AddBoard({
     onOpenChange(false);
     setTimeout(() => {
       setStatus('editing');
+      setTitleName('');
       setProgress({
         current: 0,
         total: 0,
@@ -323,6 +326,7 @@ export function AddBoard({
               status={status as any}
               progress={progress}
               currentSessionId={currentSessionId}
+              titleName={titleName}
               onRetry={() => setStatus('editing')}
             />
           )}

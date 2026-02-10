@@ -4,7 +4,7 @@ import { AlertDialog } from '@/components/common/AlertDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AddBoard } from '../BoardTab/AddBoard';
+import { AddBoard } from './AddBoard';
 import { AddBoardConfig } from './AddBoardConfig';
 import { BoardConfigSection } from './BoardConfigSection';
 import { useBoardConfig } from './hooks/useBoardConfig';

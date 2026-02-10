@@ -12,7 +12,6 @@ import { pmService } from '@/services/pm';
 import { MoreVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { AddBoard } from './AddBoard';
 
 interface BoardData {
   id: string;
@@ -243,13 +242,6 @@ export function BoardTab({ productId }: { productId: string }) {
           />
         </CardContent>
       </Card>
-
-      <AddBoard
-        open={isAddBoardModalOpen}
-        onOpenChange={setIsAddBoardModalOpen}
-        productId={productId}
-      />
-
       <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

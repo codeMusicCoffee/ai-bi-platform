@@ -1,5 +1,6 @@
 'use client';
 
+import { ChartTypeLabels } from '@/app/manage/home/constants/chart';
 import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,7 @@ interface AddHomePageProps {
 export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [status, setStatus] = useState<'editing' | 'processing' | 'completed' | 'error'>('editing');
+  const [pageName, setPageName] = useState('');
 
   // 进度状态
   const [progress, setProgress] = useState({
@@ -151,6 +153,7 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
       .filter((item) => selectedRowKeys.includes(item.id))
       .map((item) => item.id);
 
+    setPageName(values.name);
     setStatus('processing');
     setProgress({
       current: 0,
@@ -326,9 +329,11 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
               <SelectValue placeholder="请选择" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="bar">柱状图</SelectItem>
-              <SelectItem value="line">折线图</SelectItem>
-              <SelectItem value="pie">饼图</SelectItem>
+              {Object.entries(ChartTypeLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         );
@@ -539,6 +544,7 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
               status={status as 'processing' | 'completed' | 'error'}
               progress={progress}
               currentSessionId={currentSessionId}
+              titleName={pageName}
               onRetry={() => setStatus('editing')}
             />
           )}
@@ -547,4 +553,3 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
     </Dialog>
   );
 }
-

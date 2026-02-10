@@ -3,7 +3,7 @@
 import { ManageHeader } from "@/app/manage/_components/ManageHeader";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/use-chat-store";
-import { FileCode, Play, RefreshCw } from "lucide-react";
+import { FileCode, Maximize2, Minimize2, Play, RefreshCw, Save } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AiChat, { ProgressInfo } from "./comp/AiChat";
@@ -138,19 +138,11 @@ function AiChatPageContent() {
                 className="flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-primary transition-colors cursor-pointer"
                 onClick={() => setIsFullScreen(!isFullScreen)}
               >
-                <img
-                  src="/images/preview/fullscreen.svg"
-                  alt="full screen"
-                  className="w-4 h-4"
-                />
+                <Maximize2 className="w-4 h-4" />
                 <span>全屏</span>
               </button>
               <button className="flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-primary transition-colors cursor-pointer">
-                <img
-                  src="/images/preview/save.svg"
-                  alt="save"
-                  className="w-4 h-4"
-                />
+                <Save className="w-4 h-4" />
                 <span>保存</span>
               </button>
             </div>
@@ -208,11 +200,7 @@ function AiChatPageContent() {
                   className="absolute top-8 right-8 z-70 p-2 bg-white/80 hover:bg-white rounded-full shadow-lg transition-all cursor-pointer"
                   onClick={() => setIsFullScreen(false)}
                 >
-                  <img
-                    src="/images/preview/fullscreen.svg"
-                    alt="exit full screen"
-                    className="w-5 h-5 rotate-180"
-                  />
+                  <Minimize2 className="w-5 h-5" />
                 </button>
               )}
             </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   Conversation,
@@ -207,7 +207,7 @@ const ChatDragDropArea = ({
       {isDragging && (
         <div className="absolute inset-0 z-50 bg-indigo-50/90 border-2 border-indigo-500 border-dashed rounded-xl flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
           <Paperclip className="w-8 h-8 text-indigo-500 mb-1 animate-bounce" />
-          <p className="text-sm font-bold text-indigo-700">放入json,csv文件</p>
+          <p className="text-sm font-bold text-indigo-700">放入 json、csv 文件</p>
         </div>
       )}
       {children}
@@ -230,12 +230,13 @@ export default function AiChat({
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const isSubmittingRef = useRef(false);
   const datasetIdRef = useRef<string | null>(null);
+  const baseArtifactIdRef = useRef<string | null>(initialArtifactId || null);
   const initialMessageLengthCapturedRef = useRef(false);
   const [initialMessageLength, setInitialMessageLength] = useState(0);
 
   const [suggestedPrompts] = useState([
-    '把【图表名称】【图形类型】的指标调整为【指标值】',
-    '把【图表名称】【图形类型】的指标调整为【图形类型】',
+    '把【图表名称】【图形类型】的指标调整成【指标值】',
+    '把【图表名称】【图形类型】的图形类型调整成【图形类型】',
     '把【图表名称】【图形类型】的【元素】调整为【颜色】',
     '把【图表名称】【图形类型】和【图表名称】【图形类型】的位置互换',
   ]);
@@ -291,8 +292,16 @@ export default function AiChat({
       (msg: any) => Array.isArray(msg.artifacts) && msg.artifacts.length > 0
     );
 
+    if (!msgWithArtifact) {
+      baseArtifactIdRef.current = null;
+      return;
+    }
+
     if (msgWithArtifact) {
       const lastArtifact = msgWithArtifact.artifacts[msgWithArtifact.artifacts.length - 1];
+      if (lastArtifact?.id) {
+        baseArtifactIdRef.current = lastArtifact.id;
+      }
 
       const processArtifact = (code: any) => {
         const filesObj = typeof code === 'string' ? { '/App.tsx': code } : code;
@@ -320,11 +329,15 @@ export default function AiChat({
   };
 
   useEffect(() => {
+    baseArtifactIdRef.current = initialArtifactId || null;
+  }, [initialArtifactId]);
+
+  useEffect(() => {
     if (initialArtifactId) {
       const fetchInitialArtifact = async () => {
         try {
           updateLoadingState(true);
-          console.log('📦 [AiChat] fetching initial artifact by id:', initialArtifactId);
+          console.log('[AiChat] fetching initial artifact by id:', initialArtifactId);
           const artRes = await chatService.getArtifact(initialArtifactId);
           if (artRes.success && artRes.data?.files) {
             const filesFromApi: Record<string, string> = {};
@@ -379,16 +392,22 @@ export default function AiChat({
     try {
       const baseUrl =
         process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
-      const response = await fetch(`${baseUrl}/api/chat`, {
+      const requestContent =
+        userText || (input.files.length > 0 ? `[Uploaded ${input.files.length} files]` : '');
+      let latestSessionId = sessionId || '';
+      const endpoint = sessionId
+        ? `${baseUrl}/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`
+        : `${baseUrl}/api/chat`;
+
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: userText }],
-          session_id: sessionId,
-          dataset_id: datasetIdRef.current,
+          content: requestContent,
+          ...(baseArtifactIdRef.current ? { base_artifact_id: baseArtifactIdRef.current } : {}),
         }),
       });
 
@@ -442,6 +461,7 @@ export default function AiChat({
             };
 
             if (parsed.type === 'session_id') {
+              latestSessionId = parsed.content || latestSessionId;
               setSessionId(parsed.content);
             } else if (parsed.type === 'artifact_start') {
               ensureThinkClosed();
@@ -469,6 +489,13 @@ export default function AiChat({
                 }
               }
             } else if (parsed.type === 'artifact_end') {
+              const eventArtifactId =
+                parsed.artifact_id ||
+                parsed.id ||
+                (typeof parsed.content === 'object' ? parsed.content?.artifact_id : undefined);
+              if (typeof eventArtifactId === 'string' && eventArtifactId) {
+                baseArtifactIdRef.current = eventArtifactId;
+              }
               ensureThinkClosed();
               const mergedFiles = { ...currentFilesRef.current, ...accumulatedFiles };
               updateLocalFiles(mergedFiles);
@@ -513,13 +540,21 @@ export default function AiChat({
           } catch (e) {}
         }
       }
+
+      if (latestSessionId) {
+        try {
+          await refreshSessionData(latestSessionId);
+        } catch (refreshError) {
+          console.error('Error refreshing session after send message:', refreshError);
+        }
+      }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
         {
           id: generateId(),
           role: 'assistant',
-          content: `❌ 失败: ${error}`,
+          content: `失败: ${error}`,
           timestamp: Date.now(),
         },
       ]);
@@ -552,7 +587,7 @@ export default function AiChat({
 
   const shouldHideWithdrawForMessage = (content: string) => {
     const text = content.trim();
-    return /HTTP\s*404/i.test(text) && /(error|鉂)/i.test(text);
+    return /HTTP\s*404/i.test(text) && /(error|错误)/i.test(text);
   };
 
   const assistantMessageCount = messages.filter((m) => m.role === 'assistant').length;
@@ -573,34 +608,6 @@ export default function AiChat({
           <ConversationContent className="px-5 py-4 gap-4">
             {messages.map((msg, index) => (
               <Fragment key={msg.id}>
-                {index === initialMessageLength && (
-                  <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
-                      您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
-                    </div>
-
-                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
-                      <div className="flex items-center justify-between mb-3 px-1">
-                        <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
-                        <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          换一批
-                        </button>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        {suggestedPrompts.map((prompt, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSendMessage({ text: prompt, files: [] })}
-                            className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
                 <Message from={msg.role}>
                   <MessageContent
                     className={cn(
@@ -663,7 +670,7 @@ export default function AiChat({
                       isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
                     )}
                     {msg.role === 'assistant' &&
-                      assistantMessageCount > 2 &&
+                      assistantMessageCount >= 2 &&
                       msg.id === lastAssistantMessageId &&
                       !!sessionId &&
                       !shouldHideWithdrawForMessage(msg.content || '') &&

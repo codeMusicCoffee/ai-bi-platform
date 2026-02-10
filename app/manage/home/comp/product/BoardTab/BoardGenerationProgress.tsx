@@ -16,6 +16,7 @@ interface BoardGenerationProgressProps {
     summary: string;
   };
   currentSessionId: string | null;
+  titleName: string;
   onRetry: () => void;
 }
 
@@ -23,6 +24,7 @@ export function BoardGenerationProgress({
   status,
   progress,
   currentSessionId,
+  titleName,
   onRetry,
 }: BoardGenerationProgressProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -129,6 +131,7 @@ export function BoardGenerationProgress({
               <Button
                 onClick={() => {
                   if (currentSessionId) {
+                    localStorage.setItem(`preview_name_${currentSessionId}`, titleName);
                     window.open(`/previewpage?sessionId=${currentSessionId}`, '_blank');
                   } else {
                     window.open('/previewpage', '_blank');

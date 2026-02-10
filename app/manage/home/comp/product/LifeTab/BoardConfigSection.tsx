@@ -1,5 +1,6 @@
 'use client';
 
+import { ChartType, ChartTypeLabels } from '@/app/manage/home/constants/chart';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -23,7 +24,7 @@ export function BoardConfigSection({
   const columns: SealedTableColumn<DashboardItem>[] = [
     {
       title: '数据集',
-      dataIndex: 'dataset_name',
+      dataIndex: 'dataset_id',
     },
     {
       title: '模块名称',
@@ -33,7 +34,7 @@ export function BoardConfigSection({
     {
       title: '图表形式',
       dataIndex: 'chart_style',
-      render: (val) => (val === 'chart-bar' ? '柱状图' : val === 'chart-line' ? '折线图' : '饼图'),
+      render: (val) => ChartTypeLabels[val as ChartType] || String(val || '-'),
     },
     {
       title: '描述',

@@ -1,5 +1,6 @@
 'use client';
 
+import { ChartType, ChartTypeLabels } from '@/app/manage/home/constants/chart';
 import { SealedForm, SealedFormFieldConfig } from '@/components/common/SealedForm';
 import { SealedTable, SealedTableColumn } from '@/components/common/SealedTable';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ export function AddBoardConfig({
   const [formData, setFormData] = useState<BoardConfigFormValues>({
     dataset_id: '',
     module_name: '',
-    chart_style: 'chart-bar',
+    chart_style: ChartType.Bar,
     description: '',
   });
 
@@ -75,7 +76,7 @@ export function AddBoardConfig({
         const newFormData = {
           dataset_id: initialData.dataset_id || '',
           module_name: initialData.module_name || '',
-          chart_style: initialData.chart_style || 'chart-bar',
+          chart_style: initialData.chart_style || ChartType.Bar,
           description: initialData.description || '',
         };
         setFormData(newFormData);
@@ -86,7 +87,7 @@ export function AddBoardConfig({
         setFormData({
           dataset_id: '',
           module_name: '',
-          chart_style: 'chart-bar',
+          chart_style: ChartType.Bar,
           description: '',
         });
         setSelectedRowKeys([]);
@@ -192,9 +193,11 @@ export function AddBoardConfig({
             <SelectValue placeholder="选择图表类型" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="chart-bar">柱状图</SelectItem>
-            <SelectItem value="chart-line">折线图</SelectItem>
-            <SelectItem value="chart-pie">饼图</SelectItem>
+            {Object.entries(ChartTypeLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       ),
