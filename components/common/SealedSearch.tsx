@@ -147,7 +147,7 @@ export function SealedSearch({
 
       {/* 按钮组 */}
       <div className="flex items-center gap-3">
-        <Button onClick={handleSearch}>查询</Button>
+        <Button onClick={() => handleSearch()}>查询</Button>
         <Button
           variant="outline"
           onClick={handleReset}

@@ -28,6 +28,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  status?: string;
 }
 
 // 进度信息接口（导出供 DashboardPreview 使用）
@@ -280,6 +281,7 @@ export default function AiChat({
       role: msg.role,
       content: msg.content,
       timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+      status: msg.status,
     }));
     setMessages(history);
     if (!initialMessageLengthCapturedRef.current) {
@@ -616,8 +618,10 @@ export default function AiChat({
                         ? 'bg-white text-gray-700'
                         : 'bg-[#0470ff] text-white'
                     )}
-                    style={{ borderRadius:    msg.role === 'assistant'
-                        ?  '2px 16px 16px 16px':'16px 2px 16px 16px' }}
+                    style={{
+                      borderRadius:
+                        msg.role === 'assistant' ? '2px 16px 16px 16px' : '16px 2px 16px 16px',
+                    }}
                   >
                     {msg.content ? (
                       msg.role === 'assistant' ? (
@@ -669,28 +673,46 @@ export default function AiChat({
                     ) : (
                       isLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
                     )}
-                    {msg.role === 'assistant' &&
-                      assistantMessageCount >= 2 &&
-                      msg.id === lastAssistantMessageId &&
-                      !!sessionId &&
-                      !shouldHideWithdrawForMessage(msg.content || '') &&
-                      !!msg.content?.trim() && (
-                        <div className="mt-3 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={handleWithdraw}
-                            disabled={isLoading || isWithdrawing || isLoadingProps}
-                            className="inline-flex items-center gap-1 text-[14px] font-medium text-[#306EFD] leading-none hover:opacity-85 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <img
-                              src="/images/aichat/back.svg"
-                              alt="undo"
-                              className="w-[14px] h-[14px]"
-                            />
-                            <span>撤销</span>
-                          </button>
-                        </div>
-                      )}
+                    {msg.role === 'assistant' && (
+                      <>
+                        {msg.status === 'withdraw' ? (
+                          <div className="mt-3 flex justify-end">
+                            <div className="inline-flex items-center gap-1 text-[14px] font-medium text-gray-400 leading-none cursor-default select-none opacity-60">
+                              <img
+                                src="/images/aichat/back.svg"
+                                alt="withdrawn"
+                                className="w-[14px] h-[14px] grayscale"
+                              />
+                              <span>已撤销</span>
+                            </div>
+                          </div>
+                        ) : (
+                          assistantMessageCount >= 2 &&
+                          msg.id === lastAssistantMessageId &&
+                          !!sessionId &&
+                          !shouldHideWithdrawForMessage(msg.content || '') &&
+                          !!msg.content?.trim() &&
+                          // 新增 !isLoading 判断：思考过程中不显示撤销按钮
+                          !isLoading && (
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={handleWithdraw}
+                                disabled={isLoading || isWithdrawing || isLoadingProps}
+                                className="inline-flex items-center gap-1 text-[14px] font-medium text-[#306EFD] leading-none hover:opacity-85 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <img
+                                  src="/images/aichat/back.svg"
+                                  alt="undo"
+                                  className="w-[14px] h-[14px]"
+                                />
+                                <span>撤销</span>
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </>
+                    )}
                   </MessageContent>
                 </Message>
               </Fragment>

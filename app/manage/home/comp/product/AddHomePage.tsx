@@ -165,7 +165,7 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
     });
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
       const response = await fetch(
         `${baseUrl}/api/pm/products/${productId}/actions/generate-overall-kanban`,
         {
