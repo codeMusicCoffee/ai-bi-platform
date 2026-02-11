@@ -62,7 +62,16 @@ export function AddBoard({
 
   const { sessionId } = useChatStore();
 
+  // 新实现：保存表单数据，以便返回修改时回显
+  const [formValues, setFormValues] = useState<GenerateFormValues>({
+    name: '',
+    style_description: '',
+    extra_description: '',
+  });
+
   const handleConfirm = async (values: GenerateFormValues) => {
+    // 新实现：保存当前输入的值
+    setFormValues(values);
     setTitleName(values.name || '');
     setStatus('processing');
     setProgress({
@@ -231,6 +240,12 @@ export function AddBoard({
     setTimeout(() => {
       setStatus('editing');
       setTitleName('');
+      // 新实现：重置表单数据
+      setFormValues({
+        name: '',
+        style_description: '',
+        extra_description: '',
+      });
       setProgress({
         current: 0,
         total: 0,
@@ -295,11 +310,7 @@ export function AddBoard({
               schema={generateSchema}
               fields={formFields}
               onSubmit={handleConfirm}
-              defaultValues={{
-                name: '',
-                style_description: '',
-                extra_description: '',
-              }}
+              defaultValues={formValues}
               className="flex-1 flex flex-col h-full"
             >
               {({ fields }) => (

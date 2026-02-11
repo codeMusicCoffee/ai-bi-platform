@@ -81,12 +81,25 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  // 新实现：保存表单数据，以便返回修改时回显
+  const [formValues, setFormValues] = useState<HomePageFormValues>({
+    name: '',
+    style_description: '',
+    extra_description: '',
+  });
+
   useEffect(() => {
     if (open) {
       setStep(1);
       setStatus('editing');
       setSelectedRowKeys([]);
       setCurrentSessionId(null);
+      // 重置表单数据
+      setFormValues({
+        name: '',
+        style_description: '',
+        extra_description: '',
+      });
       setProgress({
         current: 0,
         total: 0,
@@ -143,6 +156,8 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
   };
 
   const handleConfirm = async (values: HomePageFormValues) => {
+    // 新实现：保存当前输入的值，防止返回修改时丢失
+    setFormValues(values);
     // 从 selectedRowKeys 中分离生命周期ID和数据集ID
     const lifecycle_ids = nodes
       .filter((node) => selectedRowKeys.includes(node.id))
@@ -509,11 +524,7 @@ export function AddHomePage({ open, onOpenChange, productId }: AddHomePageProps)
                 schema={homePageSchema}
                 fields={formFields}
                 onSubmit={handleConfirm}
-                defaultValues={{
-                  name: '',
-                  style_description: '',
-                  extra_description: '',
-                }}
+                defaultValues={formValues}
                 className="flex-1 flex flex-col h-full overflow-hidden"
               >
                 {({ fields }) => (

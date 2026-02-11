@@ -142,4 +142,8 @@ export const pmService = {
     request.put<any>(`/api/pm/node-datasets/${id}`, data, { showSuccessMsg: true }),
   deleteNodeDataset: (id: string) =>
     request.delete(`/api/pm/node-datasets/${id}`, {}, { showSuccessMsg: true }),
+
+  // 新实现 删除特定产品的看板
+  deleteProductDashboard: (productId: string, dashboardId: string) =>
+    request.delete(`/api/pm/products/${productId}/dashboards/${dashboardId}`, {}, { showSuccessMsg: true }),
 };

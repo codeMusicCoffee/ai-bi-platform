@@ -136,9 +136,17 @@ export function BoardTab({ productId }: { productId: string }) {
 
   const handleConfirmDelete = async () => {
     if (itemToDelete) {
-      console.log('Deleting item:', itemToDelete);
-      // Actual delete logic would go here
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // 新实现 调用接口删除看板并刷新列表
+      try {
+        const res = await pmService.deleteProductDashboard(productId, itemToDelete);
+        if (res.success) {
+          await fetchData();
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }
+      } catch (error) {
+        console.error('删除看板失败:', error);
+      }
     }
   };
 
