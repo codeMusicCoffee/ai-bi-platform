@@ -594,7 +594,7 @@ export default function AiChat({
 
   const assistantMessageCount = messages.filter((m) => m.role === 'assistant').length;
   const lastAssistantMessageId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
-  const shouldRenderWelcomeAtBottom = messages.length === initialMessageLength;
+  const promptInsertIndex = Math.min(initialMessageLength, messages.length);
 
   return (
     <PromptInputProvider>
@@ -610,6 +610,34 @@ export default function AiChat({
           <ConversationContent className="px-5 py-4 gap-4">
             {messages.map((msg, index) => (
               <Fragment key={msg.id}>
+                {index === promptInsertIndex && (
+                  <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
+                      您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm border border-white/40">
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-[14px] font-bold text-gray-800">您可以这样说</span>
+                        <button className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-blue-500 transition-colors">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          换一批
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {suggestedPrompts.map((prompt, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSendMessage({ text: prompt, files: [] })}
+                            className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <Message from={msg.role}>
                   <MessageContent
                     className={cn(
@@ -675,13 +703,12 @@ export default function AiChat({
                     )}
                     {msg.role === 'assistant' && (
                       <>
-                        {msg.status === 'withdraw' ? (
+                        {msg.status === 'withdrawn' ? (
                           <div className="mt-3 flex justify-end">
-                            <div className="inline-flex items-center gap-1 text-[14px] font-medium text-gray-400 leading-none cursor-default select-none opacity-60">
+                            <div className="inline-flex items-center gap-1 text-[14px] font-medium text-blue-400 leading-none cursor-default select-none opacity-60">
                               <img
                                 src="/images/aichat/back.svg"
-                                alt="withdrawn"
-                                className="w-[14px] h-[14px] grayscale"
+                                className="w-[14px] h-[14px]"
                               />
                               <span>已撤销</span>
                             </div>
@@ -703,7 +730,6 @@ export default function AiChat({
                               >
                                 <img
                                   src="/images/aichat/back.svg"
-                                  alt="undo"
                                   className="w-[14px] h-[14px]"
                                 />
                                 <span>撤销</span>
@@ -717,7 +743,7 @@ export default function AiChat({
                 </Message>
               </Fragment>
             ))}
-            {shouldRenderWelcomeAtBottom && (
+            {promptInsertIndex === messages.length && (
               <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <div className="bg-white/80 backdrop-blur-md rounded-[12px] p-4 shadow-sm text-[14px] leading-relaxed text-gray-700 border border-white/40">
                   您好！我是你的看板调整助手，我可以帮你完成数据逻辑更改、布局结构调整、图表视觉调整、全局配置等任务。
