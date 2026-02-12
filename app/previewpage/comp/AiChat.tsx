@@ -87,6 +87,23 @@ const PromptTextarea = (props: ComponentProps<typeof InputGroupTextarea>) => {
   );
 };
 
+// 新实现：定义 SuggestedPromptButton 组件，将点击行为改为在输入框后追加内容而不直接发送
+const SuggestedPromptButton = ({ prompt }: { prompt: string }) => {
+  const { textInput } = usePromptInputController();
+  return (
+    <button
+      onClick={() => {
+        // 新实现：改为追加内容而非替换原有内容
+        const currentVal = textInput.value || '';
+        textInput.setInput(currentVal + prompt);
+      }}
+      className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
+    >
+      {prompt}
+    </button>
+  );
+};
+
 // Helper to convert dataURL to File
 function dataURLtoFile(dataurl: string, filename: string) {
   const arr = dataurl.split(',');
@@ -626,13 +643,8 @@ export default function AiChat({
                       </div>
                       <div className="flex flex-col gap-2">
                         {suggestedPrompts.map((prompt, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSendMessage({ text: prompt, files: [] })}
-                            className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
-                          >
-                            {prompt}
-                          </button>
+                          // 新实现：使用 SuggestedPromptButton，使点击建议词仅填充输入框而不直接发送
+                          <SuggestedPromptButton key={i} prompt={prompt} />
                         ))}
                       </div>
                     </div>
@@ -706,10 +718,7 @@ export default function AiChat({
                         {msg.status === 'withdrawn' ? (
                           <div className="mt-3 flex justify-end">
                             <div className="inline-flex items-center gap-1 text-[14px] font-medium text-blue-400 leading-none cursor-default select-none opacity-60">
-                              <img
-                                src="/images/aichat/back.svg"
-                                className="w-[14px] h-[14px]"
-                              />
+                              <img src="/images/aichat/back.svg" className="w-[14px] h-[14px]" />
                               <span>已撤销</span>
                             </div>
                           </div>
@@ -728,10 +737,7 @@ export default function AiChat({
                                 disabled={isLoading || isWithdrawing || isLoadingProps}
                                 className="inline-flex items-center gap-1 text-[14px] font-medium text-[#306EFD] leading-none hover:opacity-85 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                               >
-                                <img
-                                  src="/images/aichat/back.svg"
-                                  className="w-[14px] h-[14px]"
-                                />
+                                <img src="/images/aichat/back.svg" className="w-[14px] h-[14px]" />
                                 <span>撤销</span>
                               </button>
                             </div>
@@ -759,13 +765,8 @@ export default function AiChat({
                   </div>
                   <div className="flex flex-col gap-2">
                     {suggestedPrompts.map((prompt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSendMessage({ text: prompt, files: [] })}
-                        className="text-left p-3.5 text-[13px] text-gray-600 bg-white/40 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 rounded-[10px] transition-all duration-300 shadow-sm"
-                      >
-                        {prompt}
-                      </button>
+                      // 新实现：使用 SuggestedPromptButton，使点击建议词仅填充输入框而不直接发送
+                      <SuggestedPromptButton key={i} prompt={prompt} />
                     ))}
                   </div>
                 </div>
